@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_task_app/features/splash/presentation/cubit/splash_cubit.dart';
-import 'package:flutter_task_app/features/splash/presentation/view/splash_screen.dart';
+import 'package:flutter_task_app/features/splash/cubit/splash_cubit.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_task_app/features/splash/view/splash_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -15,8 +15,13 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return BlocProvider(
-          create: (context) => SplashCubit()..loadAppConfig(),
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider<SplashCubit>(
+              create: (context) => SplashCubit(),
+            ),
+          
+          ],
           child: MaterialApp(
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,

@@ -1,139 +1,187 @@
 import 'dart:async';
 import 'dart:developer';
+
 import 'package:bloc/bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_task_app/data/models/drag_drop_question_model.dart';
+import 'package:flutter_task_app/data/models/quiz_question_model.dart';
 import 'package:flutter_task_app/features/quiz/presentation/cubit/quiz_state.dart';
 
-
 class QuizCubit extends Cubit<QuizState> {
-  List<dynamic> _questions = []; 
-  int _currentQuestionIndex = 0;
-  int _score = 0;
-  Timer? _questionTimer;
-  final Stopwatch _quizStopwatch = Stopwatch();
-  Duration _currentQuestionTime = Duration.zero;
-
-  final Duration _timePerQuestion = const Duration(seconds: 30);
-
-  QuizCubit() : super(QuizInitial());
-
-  @override
-  Future<void> close() {
-    _questionTimer?.cancel();
-    _quizStopwatch.stop();
-    return super.close();
+  QuizCubit() : super(QuizInitial()) {
+    // Load questions when the cubit is created
+    loadQuizQuestions();
   }
 
-  Future<void> loadQuestions() async {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  Timer? _questionTimer;
+  int _currentTime = 0;
+
+  // Assuming questions are stored in a 'quiz_questions' collection
+  Future<void> loadQuizQuestions() async {
     emit(QuizLoading());
     try {
-   
-      log("--- Placeholder: Fetching quiz questions from Firestore ---");
-    
-      await Future.delayed(const Duration(seconds: 1)); 
-      _questions = [
-        {
-          'id': 'q1',
-          'type': 'multiple_choice',
-          'question': 'What is Flutter?',
-          'options': ['UI Framework', 'Game Engine', 'OS', 'Database'],
-          'answer': 'UI Framework',
-        },
-        {
-          'id': 'q2',
-          'type': 'drag_drop', 
-          'sentence': 'Dart is a _____ language.',
-          'options': ['compiled', 'interpreted', 'client-optimized', 'scripting'],
-          'answer': 'client-optimized',
-        },
-        {
-          'id': 'q3',
-          'type': 'matching', 
-          'pairs': [
-            {'left': 'Firebase', 'right': 'Backend'}, 
-            {'left': 'Bloc', 'right': 'State Management'}
-          ],
-          'matches': {'Firebase': 'Backend', 'Bloc': 'State Management'}
-        },
-         {
-          'id': 'q4',
-          'type': 'multiple_choice',
-          'question': 'Which widget is used for layout?',
-          'options': ['Text', 'Column', 'Image', 'Button'],
-          'answer': 'Column',
-        },
-      ];
-      log("Mock questions loaded: ${_questions.length}");
-      // --- End Mock Implementation ---
+      log("QuizCubit: Loading quiz questions...");
+      QuerySnapshot querySnapshot = await _firestore.collection('quiz_questions').get(); // Fetch all questions
 
-      if (_questions.isNotEmpty) {
-        _currentQuestionIndex = 0;
-        _score = 0;
-        _quizStopwatch.reset();
-        _quizStopwatch.start();
-        _startQuestionTimer();
-        emit(QuizLoaded(questions: _questions, currentQuestionIndex: _currentQuestionIndex));
-      } else {
-        emit(QuizError("No questions found for the quiz."));
+      if (querySnapshot.docs.isEmpty) {
+        throw Exception('No Quiz questions found in Firestore.');
       }
-    } catch (e) {
-      log("Error loading questions: ${e.toString()}");
-      emit(QuizError("Failed to load quiz questions: ${e.toString()}"));
+
+      List<QuizQuestionModel> questions = querySnapshot.docs.map((doc) {
+        return QuizQuestionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+
+      // Optionally shuffle questions
+      // questions.shuffle();
+
+      log("QuizCubit: Loaded ${questions.length} quiz questions successfully.");
+      emit(QuizLoaded(allQuestions: questions));
+      _startQuestionTimer(); // Start timer for the first question
+
+    } catch (e, stackTrace) {
+      log('QuizCubit: Error loading quiz questions: $e', error: e, stackTrace: stackTrace);
+      emit(QuizError('Failed to load quiz: ${e.toString()}'));
     }
   }
 
   void _startQuestionTimer() {
-    _questionTimer?.cancel(); 
-    _currentQuestionTime = _timePerQuestion;
-    _questionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_currentQuestionTime.inSeconds <= 0) {
-        timer.cancel();
-      
-        log("Time up for question ${_currentQuestionIndex + 1}");
-      
-      } else {
-        _currentQuestionTime -= const Duration(seconds: 1);
-      }
-    });
+    _questionTimer?.cancel(); // Cancel any existing timer
+    if (state is QuizLoaded) {
+      final currentState = state as QuizLoaded;
+      _currentTime = currentState.currentQuestion.timeLimitSeconds;
+      log("QuizCubit: Starting timer for question ${currentState.currentQuestionIndex + 1} (${_currentTime}s)");
+
+      _questionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (_currentTime > 0) {
+          _currentTime--;
+          // Optionally emit state updates for timer UI
+          // emit(currentState.copyWith(...)); // Be careful with frequent updates
+        } else {
+          log("QuizCubit: Time up for question ${currentState.currentQuestionIndex + 1}");
+          timer.cancel();
+          // Automatically move to the next question or handle timeout
+          // For simplicity, let's assume moving next is handled by UI or answer submission
+          // recordAnswer(null, 0); // Record timeout as incorrect/skipped
+        }
+      });
+    }
   }
 
-  void submitAnswer(dynamic answer) { 
-    _questionTimer?.cancel(); 
-    final currentQuestion = _questions[_currentQuestionIndex];
-    bool isCorrect = false;
+  void recordAnswer(dynamic answer, {bool fromTimeout = false}) {
+    if (state is QuizLoaded) {
+      final currentState = state as QuizLoaded;
+      _questionTimer?.cancel(); // Stop timer for the current question
 
-    log("--- Placeholder: Checking answer for question ${_currentQuestionIndex + 1} ---");
-    log("Submitted Answer: $answer");
-    log("Correct Answer: ${currentQuestion['answer']}");
+      final questionId = currentState.currentQuestion.id;
+      final timeTaken = fromTimeout ? currentState.currentQuestion.timeLimitSeconds : currentState.currentQuestion.timeLimitSeconds - _currentTime;
 
-    if (currentQuestion['type'] == 'multiple_choice') {
-      if (answer == currentQuestion['answer']) {
-        isCorrect = true;
-      }
-    }
+      log("QuizCubit: Recording answer for question $questionId. Answer: $answer, Time taken: ${timeTaken}s");
 
-    if (isCorrect) {
-      _score++;
-      log("Answer Correct! Score: $_score");
-    } else {
-      log("Answer Incorrect. Score: $_score");
-    }
+      final updatedAnswers = Map<String, dynamic>.from(currentState.userAnswers);
+      updatedAnswers[questionId] = answer; // Store the actual answer provided by the user
 
-    if (_currentQuestionIndex < _questions.length - 1) {
-      _currentQuestionIndex++;
-      _startQuestionTimer();
-      emit(QuizLoaded(questions: _questions, currentQuestionIndex: _currentQuestionIndex));
-    } else {
-      _quizStopwatch.stop();
-      log("Quiz Finished!");
-      log("Final Score: $_score / ${_questions.length}");
-      log("Total Time: ${_quizStopwatch.elapsed}");
-      emit(QuizFinished(
-        score: _score,
-        totalQuestions: _questions.length,
-        timeTaken: _quizStopwatch.elapsed,
+      final updatedTimeTaken = Map<String, int>.from(currentState.timeTakenPerQuestion);
+      updatedTimeTaken[questionId] = timeTaken;
+
+      emit(currentState.copyWith(
+        userAnswers: updatedAnswers,
+        timeTakenPerQuestion: updatedTimeTaken,
       ));
+
+      // Don't move to next question here, let UI trigger it
+    } else {
+      log("QuizCubit: Cannot record answer when quiz is not loaded.");
     }
   }
 
+  void nextQuestion() {
+    if (state is QuizLoaded) {
+      final currentState = state as QuizLoaded;
+      if (currentState.currentQuestionIndex < currentState.allQuestions.length - 1) {
+        log("QuizCubit: Moving to next question (${currentState.currentQuestionIndex + 2})");
+        emit(currentState.copyWith(currentQuestionIndex: currentState.currentQuestionIndex + 1));
+        _startQuestionTimer(); // Start timer for the new question
+      } else {
+        log("QuizCubit: Reached end of quiz. Calculating results...");
+        // Last question answered, calculate results
+        _calculateResults();
+      }
+    } else {
+      log("QuizCubit: Cannot move to next question when quiz is not loaded.");
+    }
+  }
+
+  void _calculateResults() {
+    if (state is QuizLoaded) {
+      final currentState = state as QuizLoaded;
+      int score = 0;
+
+      currentState.allQuestions.asMap().forEach((index, question) {
+        final userAnswer = currentState.userAnswers[question.id];
+        bool isCorrect = false;
+
+        // --- Answer Checking Logic (Needs to be specific per question type) ---
+        switch (question.type) {
+          case ExerciseType.multipleChoice:
+            if (question is MultipleChoiceQuestionModel) {
+              isCorrect = userAnswer == question.correctAnswer;
+            }
+            break;
+          case ExerciseType.dragAndDrop:
+             if (question is DragDropQuizQuestionModel) {
+               // Assuming userAnswer is the dropped string
+               isCorrect = userAnswer?.toString().trim().toLowerCase() == question.correctAnswer.trim().toLowerCase();
+             }
+            break;
+          case ExerciseType.matchingPairs:
+             if (question is MatchingPairsQuizQuestionModel) {
+                // Assuming userAnswer is Map<String, String?> representing connections
+                if (userAnswer is Map<String, String?>) {
+                    bool allMatch = true;
+                    question.correctMatches.forEach((qId, correctAId) {
+                       if (userAnswer[qId] != correctAId) {
+                          allMatch = false;
+                       }
+                    });
+                    // Check if all required connections were made
+                    if (userAnswer.length != question.correctMatches.length) {
+                       allMatch = false;
+                    }
+                    isCorrect = allMatch;
+                } else {
+                   isCorrect = false; // Invalid answer format
+                }
+             }
+            break;
+        }
+        // --- End Answer Checking Logic ---
+
+        if (isCorrect) {
+          score++;
+        }
+        log("QuizCubit: Q${index + 1} (${question.type.name}) - User Answer: $userAnswer - Correct: $isCorrect");
+      });
+
+      log("QuizCubit: Quiz finished. Final Score: $score / ${currentState.allQuestions.length}");
+      emit(currentState.copyWith(quizCompleted: true, finalScore: score));
+
+      // Optionally, emit a dedicated result state after a delay or user action
+      // emit(QuizResultState(
+      //   score: score,
+      //   totalQuestions: currentState.allQuestions.length,
+      //   timeTakenPerQuestion: currentState.timeTakenPerQuestion,
+      // ));
+
+    } else {
+      log("QuizCubit: Cannot calculate results when quiz is not loaded.");
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _questionTimer?.cancel();
+    return super.close();
+  }
 }
 
