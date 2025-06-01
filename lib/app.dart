@@ -17,10 +17,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return MultiBlocProvider(
           providers: [
-            BlocProvider<SplashCubit>(
-              create: (context) => SplashCubit(),
-            ),
-          
+            BlocProvider<SplashCubit>(create: (context) => SplashCubit()),
           ],
           child: MaterialApp(
             localizationsDelegates: const [

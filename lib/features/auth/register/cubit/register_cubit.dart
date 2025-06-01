@@ -7,11 +7,11 @@ import 'package:flutter_task_app/core/config/firebase_config.dart';
 import 'package:flutter_task_app/core/validators/validators.dart';
 import 'package:flutter_task_app/features/auth/register/cubit/register_state.dart';
 
+
 class RegisterCubit extends Cubit<RegisterState> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseConfig firebaseConfig;
-
+  final FirebaseConfig firebaseConfig; 
   String? _tempFullName;
   String? _tempMobile;
   int? _tempAge;
@@ -35,10 +35,7 @@ class RegisterCubit extends Cubit<RegisterState> {
       emit(RegisterFailure(nameError));
       return;
     }
-    final mobileError = Validators.validateMobile(
-      mobile,
-      firebaseConfig.mobileRegex,
-    );
+    final mobileError = Validators.validateMobile(mobile, firebaseConfig.mobileRegex);
     if (mobileError != null) {
       emit(RegisterFailure(mobileError));
       return;
@@ -49,21 +46,15 @@ class RegisterCubit extends Cubit<RegisterState> {
       return;
     }
     if (gender == null || gender.isEmpty) {
-      emit(RegisterFailure('Gender is required'));
+      emit(RegisterFailure('Gender is required')); // Needs localization
       return;
     }
-    final passwordError = Validators.validatePassword(
-      password,
-      firebaseConfig.passwordRegex,
-    );
+    final passwordError = Validators.validatePassword(password, firebaseConfig.passwordRegex);
     if (passwordError != null) {
       emit(RegisterFailure(passwordError));
       return;
     }
-    final confirmPasswordError = Validators.validateConfirmPassword(
-      confirmPassword,
-      password,
-    );
+    final confirmPasswordError = Validators.validateConfirmPassword(confirmPassword, password);
     if (confirmPasswordError != null) {
       emit(RegisterFailure(confirmPasswordError));
       return;
@@ -78,16 +69,13 @@ class RegisterCubit extends Cubit<RegisterState> {
     _tempPassword = password;
 
     log("Simulating OTP requirement for: $formattedMobile");
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(seconds: 1)); 
+
     emit(RegisterOtpRequired(formattedMobile));
   }
 
   Future<void> completeRegistrationAfterOtp() async {
-    if (_tempMobile == null ||
-        _tempPassword == null ||
-        _tempFullName == null ||
-        _tempAge == null ||
-        _tempGender == null) {
+    if (_tempMobile == null || _tempPassword == null || _tempFullName == null || _tempAge == null || _tempGender == null) {
       emit(RegisterFailure("Registration details missing. Please try again."));
       return;
     }
@@ -95,12 +83,12 @@ class RegisterCubit extends Cubit<RegisterState> {
     emit(RegisterLoading());
 
     try {
+      
       String emailForAuth = "$_tempMobile@placeholder.com";
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(
-            email: emailForAuth,
-            password: _tempPassword!,
-          );
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: emailForAuth, 
+        password: _tempPassword!,
+      );
 
       User? firebaseUser = userCredential.user;
       if (firebaseUser == null) {
@@ -113,14 +101,15 @@ class RegisterCubit extends Cubit<RegisterState> {
         'mobile': _tempMobile,
         'age': _tempAge,
         'gender': _tempGender,
-        'email': emailForAuth,
+        'email': emailForAuth, 
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       _clearTempData();
       emit(RegisterSuccess());
+
     } on FirebaseAuthException catch (e) {
-      _clearTempData();
+      _clearTempData(); 
       emit(RegisterFailure('Registration failed: ${e.message}'));
     } catch (e) {
       _clearTempData();
@@ -137,7 +126,7 @@ class RegisterCubit extends Cubit<RegisterState> {
   }
 
   void cancelOtpProcess() {
-    _clearTempData();
-    emit(RegisterInitial());
+     _clearTempData();
+     emit(RegisterInitial()); 
   }
 }

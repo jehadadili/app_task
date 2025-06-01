@@ -14,10 +14,3 @@ class DragDropScreen extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-

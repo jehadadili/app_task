@@ -1,6 +1,6 @@
 
 
-import 'package:flutter_task_app/data/models/post_model.dart';
+import 'package:flutter_task_app/features/posts/model/post_model.dart';
 
 abstract class PostsState {}
 

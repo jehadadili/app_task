@@ -1,8 +1,8 @@
 import 'dart:developer';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter_task_app/data/models/post_model.dart';
 import 'package:flutter_task_app/features/posts/cubit/posts_state.dart';
+import 'package:flutter_task_app/features/posts/model/post_model.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
