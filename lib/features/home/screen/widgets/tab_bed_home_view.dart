@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_task_app/core/extensions/navigation_extension.dart'; // Import navigation extension
 import 'package:flutter_task_app/features/drag_drop/screen/drag_drop_screen.dart'; // Import DragDropScreen
 import 'package:flutter_task_app/features/home/cubit/home_cubit.dart';
@@ -25,7 +26,7 @@ class TabBedHomeView extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 15.0),
           child: Wrap(
-            children: <Widget>[
+            children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 15.0),
                 child: Center(
@@ -66,7 +67,7 @@ class TabBedHomeView extends StatelessWidget {
                   log("Navigating to Custom Quiz Screen...");
                   context.pushWidget(
                     push: const QuizScreen(quizId: "default_quiz_id"),
-                  ); 
+                  );
                 },
               ),
             ],
@@ -82,21 +83,18 @@ class TabBedHomeView extends StatelessWidget {
       builder: (context, state) {
         return Scaffold(
           appBar: AppBar(
-            title: Text(state.tabIndex == 0 ? 'Posts' : 'Profile'),
-            actions: state.tabIndex == 0
-                ? [
-                    IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: () {
-                        log("Search icon pressed - Placeholder");
-                        // Implement search functionality if needed
-                      },
-                    ),
-                  ]
-                : null,
+            backgroundColor: Color(0xFFF9F9F9),
+            centerTitle: true,
+            title: Text(
+              state.tabIndex == 0 ? 'Posts' : 'Profile',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 25.sp,
+              ),
+            ),
           ),
           body: IndexedStack(index: state.tabIndex, children: _pages),
-          // Add FloatingActionButton to open game selection
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showGameSelection(context),
             tooltip: 'Play Games',

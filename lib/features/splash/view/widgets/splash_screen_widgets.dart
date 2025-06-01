@@ -7,13 +7,18 @@ class SplashScreenWidgets extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF3B82F6),
+      backgroundColor: Color(0xFF152e67),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(height: 200.h),
-            Image.asset("assets/logo_image.png", width: 120, height: 120),
+            Image.asset(
+              "assets/logo_image.png",
+              color: Colors.white,
+              width: 120,
+              height: 120,
+            ),
 
             Text(
               'Framework',
@@ -33,7 +38,7 @@ class SplashScreenWidgets extends StatelessWidget {
                 '© 2024 Framework',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontWeight: FontWeight.w400,
                 ),
               ),

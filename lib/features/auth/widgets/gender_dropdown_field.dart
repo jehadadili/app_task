@@ -22,7 +22,8 @@ class GenderDropdownField extends StatelessWidget {
         hintText: 'Select your gender',
         prefixIcon: const Icon(Icons.person_outline),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-        fillColor: Color(0xFFC6C6C6),
+        fillColor: Color(0xFFC6C6C6).withValues(alpha: 0.4),
+
         filled: true,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),

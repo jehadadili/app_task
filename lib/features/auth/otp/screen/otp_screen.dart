@@ -45,7 +45,6 @@ class OtpView extends StatelessWidget {
       appBar: AppBar(title: const Text('Verify OTP')),
       body: MultiBlocListener(
         listeners: [
-          // الاستماع لحالة RegisterCubit
           BlocListener<RegisterCubit, RegisterState>(
             bloc: registerCubit,
             listener: (context, state) {
@@ -57,7 +56,6 @@ class OtpView extends StatelessWidget {
                   ),
                 );
                 
-                // العودة للشاشة الرئيسية أو شاشة تسجيل الدخول
                 Navigator.of(context).popUntil((route) => route.isFirst);
               } else if (state is RegisterFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -69,7 +67,6 @@ class OtpView extends StatelessWidget {
               }
             },
           ),
-          // الاستماع لحالة OtpCubit
           BlocListener<OtpCubit, OtpState>(
             listener: (context, state) {
               if (state is OtpVerificationFailure) {

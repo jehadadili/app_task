@@ -52,7 +52,7 @@ class MobileInputField extends StatelessWidget {
           fontSize: 16,
         ),
         filled: true,
-        fillColor: Color(0xFFC6C6C6),
+        fillColor: Color(0xFFC6C6C6).withValues(alpha: 0.4),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
@@ -73,14 +73,12 @@ class MobileInputField extends StatelessWidget {
       ),
       validator: (value) {
         if (validator != null) {
-          // إرسال الرقم المنظف للـ validator (بدون +962 أو مسافات)
           String cleanValue = value?.replaceAll(' ', '') ?? '';
           return validator!(cleanValue);
         }
         return null;
       },
       onChanged: (value) {
-        // إرسال الرقم المنظف (بدون مسافات)
         String cleanNumber = value.replaceAll(' ', '');
         onChanged(cleanNumber);
       },
@@ -91,7 +89,6 @@ class MobileInputField extends StatelessWidget {
   }
 }
 
-// Formatter محدث لتنسيق رقم الهاتف أثناء الكتابة
 class _PhoneNumberFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -100,32 +97,26 @@ class _PhoneNumberFormatter extends TextInputFormatter {
   ) {
     String newText = newValue.text;
 
-    // إزالة أي مسافات موجودة
     newText = newText.replaceAll(' ', '');
 
-    // التأكد من أن الطول لا يتجاوز 9 أرقام
     if (newText.length > 9) {
       newText = newText.substring(0, 9);
     }
 
-    // تطبيق التنسيق: 7 9011 9723
     if (newText.isNotEmpty) {
       String formattedText = '';
 
-      // إضافة الرقم الأول (7)
-      if (newText.length >= 1) {
+      if (newText.isNotEmpty) {
         formattedText += newText.substring(0, 1);
       }
 
-      // إضافة مسافة والأرقام التالية (9011)
       if (newText.length >= 2) {
         int endIndex = newText.length >= 5 ? 5 : newText.length;
-        formattedText += ' ' + newText.substring(1, endIndex);
+        formattedText += ' ${newText.substring(1, endIndex)}';
       }
 
-      // إضافة مسافة والأرقام الأخيرة (9723)
       if (newText.length >= 6) {
-        formattedText += ' ' + newText.substring(5);
+        formattedText += ' ${newText.substring(5)}';
       }
 
       return TextEditingValue(

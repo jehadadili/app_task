@@ -25,7 +25,7 @@ class LoginCubit extends Cubit<LoginState> {
 
     // التأكد من أن الرقم يبدأ بـ 7
     if (!cleanMobile.startsWith('7') && cleanMobile.length == 8) {
-      cleanMobile = '7' + cleanMobile;
+      cleanMobile = '7$cleanMobile';
     }
 
     // تنسيق الرقم مثل Firebase: +962 7 9011 9723
@@ -37,20 +37,10 @@ class LoginCubit extends Cubit<LoginState> {
     }
 
     // إذا لم يكن التنسيق صحيح، إرجاع الرقم مع رمز البلد فقط
-    return '+962 ' + cleanMobile;
+    return '+962 $cleanMobile';
   }
 
   // دالة للتحقق من صحة تنسيق الرقم
-  bool _isValidPhoneNumber(String mobile) {
-    String cleanMobile = mobile
-        .replaceAll('+962', '')
-        .replaceAll(' ', '')
-        .replaceAll('-', '')
-        .trim();
-
-    // يجب أن يكون الرقم 9 أرقام ويبدأ بـ 7
-    return cleanMobile.length == 9 && cleanMobile.startsWith('7');
-  }
 
   Future<void> loginUserSimple(String mobile, String password) async {
     emit(LoginLoading());

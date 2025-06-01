@@ -31,7 +31,7 @@ class RegisterCubit extends Cubit<RegisterState> {
 
     // التأكد من أن الرقم يبدأ بـ 7
     if (!cleanMobile.startsWith('7') && cleanMobile.length == 8) {
-      cleanMobile = '7' + cleanMobile;
+      cleanMobile = '7$cleanMobile';
     }
 
     // تنسيق الرقم مثل Firebase: +962 7 9011 9723
@@ -43,7 +43,7 @@ class RegisterCubit extends Cubit<RegisterState> {
     }
 
     // إذا لم يكن التنسيق صحيح، إرجاع الرقم مع رمز البلد فقط
-    return '+962 ' + cleanMobile;
+    return '+962 $cleanMobile';
   }
 
   // دالة لتنسيق رقم الهاتف للـ Phone Auth (بدون مسافات)
@@ -56,10 +56,10 @@ class RegisterCubit extends Cubit<RegisterState> {
 
     // التأكد من أن الرقم يبدأ بـ 7
     if (!cleanMobile.startsWith('7') && cleanMobile.length == 8) {
-      cleanMobile = '7' + cleanMobile;
+      cleanMobile = '7$cleanMobile';
     }
 
-    return '+962' + cleanMobile;
+    return '+962$cleanMobile';
   }
 
   // دالة للتحقق من صحة تنسيق الرقم

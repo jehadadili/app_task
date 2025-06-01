@@ -63,7 +63,7 @@ class CustomTextField extends StatelessWidget {
         prefixText: prefixText,
         prefixStyle: prefixStyle,
         filled: true,
-        fillColor: Color(0xFFC6C6C6),
+        fillColor: Color(0xFFC6C6C6).withValues(alpha: 0.4),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8.0),
