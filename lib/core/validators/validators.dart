@@ -1,63 +1,91 @@
 class Validators {
-  static String? validateMobile(String? value, String regex) {
-    if (value == null || value.isEmpty) {
-      return 'Mobile number is required'; // Needs localization
+  static String? validateMobile(String? value, {String? customRegex}) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Mobile number is required';
     }
-    if (!RegExp(regex).hasMatch(value)) {
-      return 'Invalid mobile number format'; // Needs localization
+
+    if (value.trim().length != 9) {
+      return 'Mobile number must be 9 digits';
+    }
+
+    if (!value.trim().startsWith('7')) {
+      return 'Mobile number must start with 7';
+    }
+
+    final regexPattern = customRegex ?? r'^7[0-8]{8}$';
+    final correctRegex = RegExp(regexPattern);
+
+    if (!correctRegex.hasMatch(value.trim())) {
+      return 'Invalid mobile number format';
     }
     return null;
   }
 
-  static String? validatePassword(String? value, String regex) {
+  static String? validatePassword(String? value, {String? customRegex}) {
     if (value == null || value.isEmpty) {
-      return 'Password is required'; // Needs localization
+      return 'Password is required';
     }
-    if (!RegExp(regex).hasMatch(value)) {
-      return 'Password must contain at least 8 characters, one uppercase, one lowercase, and one number'; // Needs localization
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+
+    // إذا تم تمرير regex مخصص
+    if (customRegex != null && !RegExp(customRegex).hasMatch(value)) {
+      return 'Password must contain at least 8 characters, one uppercase, one lowercase, and one number';
     }
     return null;
   }
 
   static String? validateName(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Name is required'; // Needs localization
+    if (value == null || value.trim().isEmpty) {
+      return 'Full name is required';
     }
-    if (value.length < 2) {
-      return 'Name must be at least 2 characters'; // Needs localization
+    if (value.trim().length < 2) {
+      return 'Full name must be at least 2 characters';
     }
     return null;
   }
 
-  static String? validateAge(int? value) {
-    if (value == null || value < 1) {
-      return 'Please select a valid age'; // Needs localization
+  static String? validateAge(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Age is required';
     }
-    if (value < 13) {
-      return 'Age must be at least 13 years'; // Needs localization
+    final age = int.tryParse(value);
+    if (age == null) {
+      return 'Please enter a valid age';
+    }
+    if (age < 13 || age > 120) {
+      return 'Age must be between 13 and 120';
     }
     return null;
   }
 
   static String? validateConfirmPassword(String? value, String password) {
     if (value == null || value.isEmpty) {
-      return 'Confirm password is required'; // Needs localization
+      return 'Please confirm your password';
     }
     if (value != password) {
-      return 'Passwords do not match'; // Needs localization
+      return 'Passwords do not match';
+    }
+    return null;
+  }
+
+  static String? validateGender(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Gender is required';
     }
     return null;
   }
 
   static String? validateOTP(String? value, int length) {
     if (value == null || value.isEmpty) {
-      return 'OTP is required'; // Needs localization
+      return 'OTP is required';
     }
     if (value.length != length) {
-      return 'OTP must be $length digits'; // Needs localization
+      return 'OTP must be $length digits';
     }
     if (!RegExp(r'^\d+$').hasMatch(value)) {
-      return 'OTP must contain only numbers'; // Needs localization
+      return 'OTP must contain only numbers';
     }
     return null;
   }

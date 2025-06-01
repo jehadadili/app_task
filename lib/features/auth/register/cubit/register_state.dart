@@ -1,4 +1,3 @@
-
 abstract class RegisterState {}
 
 class RegisterInitial extends RegisterState {}
@@ -7,7 +6,8 @@ class RegisterLoading extends RegisterState {}
 
 class RegisterOtpRequired extends RegisterState {
   final String mobileNumber;
-  RegisterOtpRequired(this.mobileNumber);
+  final String? verificationId;
+  RegisterOtpRequired(this.mobileNumber, {this.verificationId});
 }
 
 class RegisterMobileVerified extends RegisterState {}

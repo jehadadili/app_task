@@ -1,12 +1,16 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_task_app/core/extensions/navigation_extension.dart';
+import 'package:flutter_task_app/core/validators/validators.dart';
 import 'package:flutter_task_app/features/auth/login/cubit/login_cubit.dart';
 import 'package:flutter_task_app/features/auth/login/cubit/login_state.dart';
-import 'package:flutter_task_app/features/auth/login/screen/widgets/login_form_controller.dart';
-import 'package:flutter_task_app/features/auth/login/screen/widgets/login_form_fields.dart';
-import 'package:flutter_task_app/features/auth/login/screen/widgets/user_not_registered_dialog.dart';
 import 'package:flutter_task_app/features/auth/register/screen/register_screen.dart';
+import 'package:flutter_task_app/features/auth/widgets/form_footer.dart';
+import 'package:flutter_task_app/features/auth/widgets/form_header.dart';
+import 'package:flutter_task_app/features/auth/widgets/loading_button.dart';
+import 'package:flutter_task_app/features/auth/widgets/mobile_input_field.dart';
+import 'package:flutter_task_app/features/auth/widgets/password_field.dart';
+import 'package:flutter_task_app/features/home/screen/home_screen.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -17,120 +21,127 @@ class LoginForm extends StatefulWidget {
 
 class _LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
-  late final LoginFormController _formController;
-
-  @override
-  void initState() {
-    super.initState();
-    _formController = LoginFormController();
-  }
+  final _mobileController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _mobileFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
 
   @override
   void dispose() {
-    _formController.dispose();
+    _mobileController.dispose();
+    _passwordController.dispose();
+    _mobileFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
-      final loginCubit = context.read<LoginCubit>();
-      final data = _formController.getLoginData();
-
-      loginCubit.loginUser(data.mobile, data.password);
+      final fullMobileNumber = '+962 ${_mobileController.text.trim()}';
+      context.read<LoginCubit>().loginUser(
+        fullMobileNumber,
+        _passwordController.text,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<LoginCubit, LoginState>(
-      listener: _handleStateChange,
-      builder: (context, state) {
-        final isLoading = state is LoginLoading;
-
-        return Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const FlutterLogo(size: 100),
-                  const SizedBox(height: 48.0),
-
-                  LoginFormFields(
-                    controller: _formController,
-                    isEnabled: !isLoading,
-                  ),
-                  const SizedBox(height: 24.0),
-
-                  _buildLoginButton(isLoading),
-                  const SizedBox(height: 16.0),
-
-                  _buildRegisterButton(isLoading),
-                ],
+    return BlocListener<LoginCubit, LoginState>(
+      listener: (context, state) {
+        if (state is LoginSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.pushReplacement(pushReplacement: HomeScreen());
+        } else if (state is LoginFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error), backgroundColor: Colors.red),
+          );
+        } else if (state is LoginUserNotRegistered) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'User not registered with mobile: ${state.mobileNumber}',
+              ),
+              backgroundColor: Colors.orange,
+              action: SnackBarAction(
+                label: 'Register',
+                onPressed: () {
+                  context.pushReplacement(pushReplacement: RegisterScreen());
+                },
               ),
             ),
-          ),
-        );
+          );
+        }
       },
-    );
-  }
+      child: BlocBuilder<LoginCubit, LoginState>(
+        builder: (context, state) {
+          final isLoading = state is LoginLoading;
 
-  void _handleStateChange(BuildContext context, LoginState state) {
-    if (state is LoginFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.error), backgroundColor: Colors.red),
-      );
-    }
-    if (state is LoginSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login Successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      log("Navigating to Home Screen...");
-    }
-    if (state is LoginUserNotRegistered) {
-      UserNotRegisteredDialog.show(context, state.mobileNumber);
-    }
-  }
-
-  Widget _buildLoginButton(bool isLoading) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-      ),
-      onPressed: isLoading ? null : _handleLogin,
-      child: isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
+          return FormContainer(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width * 0.02,
+                vertical: MediaQuery.of(context).size.height * 0.25,
               ),
-            )
-          : const Text('Login'),
-    );
-  }
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    const FormHeader(logoPath: "assets/logo.png"),
 
-  Widget _buildRegisterButton(bool isLoading) {
-    return TextButton(
-      onPressed: isLoading
-          ? null
-          : () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const RegisterScreen()),
-              );
-              log("Navigating to Register Screen...");
-            },
-      child: const Text(
-        'Don\'t have an account? Register',
-        style: TextStyle(decoration: TextDecoration.underline),
+                    MobileInputField(
+                      controller: _mobileController,
+                      focusNode: _mobileFocusNode,
+                      enabled: !isLoading,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (value) {},
+                      onFieldSubmitted: (_) {
+                        _passwordFocusNode.requestFocus();
+                      },
+                      validator: (value) => Validators.validateMobile(value),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    PasswordField(
+                      controller: _passwordController,
+                      focusNode: _passwordFocusNode,
+                      enabled: !isLoading,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _handleLogin(),
+                      validator: (value) => Validators.validatePassword(value),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    LoadingButton(
+                      text: 'Login',
+                      onPressed: _handleLogin,
+                      isLoading: isLoading,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    FormFooter(
+                      text: 'Don\'t have an account? ',
+                      buttonText: 'Register',
+                      onPressed: () {
+                        context.pushReplacement(
+                          pushReplacement: RegisterScreen(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

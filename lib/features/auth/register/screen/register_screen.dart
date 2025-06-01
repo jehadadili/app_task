@@ -28,16 +28,13 @@ class RegisterScreen extends StatelessWidget {
 
 class RegistrationView extends StatelessWidget {
   final String? initialMobileNumber;
-  
+
   const RegistrationView({super.key, this.initialMobileNumber});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
       body: RegisterForm(initialMobileNumber: initialMobileNumber),
     );
   }
 }
-
-

@@ -2,8 +2,11 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_task_app/core/extensions/navigation_extension.dart'; // Import the extension
+import 'package:flutter_task_app/features/auth/login/screen/login_screen.dart'; // Import LoginScreen
 import 'package:flutter_task_app/features/splash/cubit/splash_cubit.dart';
 import 'package:flutter_task_app/features/splash/cubit/splash_state.dart';
+import 'package:flutter_task_app/features/splash/view/widgets/splash_screen_widgets.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,40 +27,15 @@ class _SplashScreenState extends State<SplashScreen> {
     return BlocListener<SplashCubit, SplashState>(
       listener: (context, state) {
         if (state is SplashLoaded) {
-        
           log("SplashLoaded: Navigating to Login Screen...");
-        
+          context.pushReplacement(pushReplacement: const LoginScreen());
         } else if (state is SplashError) {
           log("SplashError: ${state.message}");
-        
+
+          context.pushReplacement(pushReplacement: const LoginScreen());
         }
       },
-      child: Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              FlutterLogo(size: 150),
-              SizedBox(height: 20),
-              BlocBuilder<SplashCubit, SplashState>(
-                builder: (context, state) {
-                  if (state is SplashLoading) {
-                    return CircularProgressIndicator();
-                  }
-                  return SizedBox.shrink(); 
-                },
-              ),
-              Spacer(),               Padding(
-                padding: const EdgeInsets.only(bottom: 30.0),
-                child: Text(
-                  '© ${DateTime.now().year} Framework Technologies. All rights reserved.', // Placeholder copyright
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      child: SplashScreenWidgets(),
     );
   }
 }
