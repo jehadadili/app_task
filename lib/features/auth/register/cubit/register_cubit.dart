@@ -99,7 +99,6 @@ class RegisterCubit extends Cubit<RegisterState> {
 
     final mobileError = Validators.validateMobile(
       mobile,
-      customRegex: firebaseConfig.mobileRegex,
     );
     if (mobileError != null) {
       emit(RegisterFailure(mobileError));

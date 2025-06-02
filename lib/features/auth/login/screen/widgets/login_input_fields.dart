@@ -29,7 +29,6 @@ class LoginInputFields extends StatelessWidget {
           onFieldSubmitted: (_) {
             formController.focusPassword();
           },
-          validator: (value) => Validators.validateMobile(value),
         ),
 
         const SizedBox(height: 16),

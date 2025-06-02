@@ -62,7 +62,6 @@ class RegisterFormFields extends StatelessWidget {
           onFieldSubmitted: (_) {
             ageFocusNode.requestFocus();
           },
-          validator: (value) => Validators.validateMobile(value),
         ),
         const SizedBox(height: 16),
         AgeField(

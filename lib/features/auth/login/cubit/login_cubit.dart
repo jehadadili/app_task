@@ -44,6 +44,16 @@ class LoginCubit extends Cubit<LoginState> {
 
   Future<void> loginUserSimple(String mobile, String password) async {
     emit(LoginLoading());
+ bool isValidPhoneNumber(String mobile) {
+    String cleanMobile = mobile
+        .replaceAll('+962', '')
+        .replaceAll(' ', '')
+        .replaceAll('-', '')
+        .trim();
+
+    // يجب أن يكون الرقم 9 أرقام ويبدأ بـ 7
+    return cleanMobile.length == 9 && cleanMobile.startsWith('7');
+  }
 
     // تنظيف رقم الهاتف من أي رموز أو مسافات
     String cleanMobile = mobile
@@ -53,14 +63,19 @@ class LoginCubit extends Cubit<LoginState> {
         .trim();
 
     // التحقق من صحة الرقم باستخدام Validators
+  if (!isValidPhoneNumber(mobile)) {
+      emit(LoginFailure('رقم الهاتف يجب أن يكون 9 أرقام ويبدأ بـ 7'));
+      return;
+    }
+
     final mobileError = Validators.validateMobile(
-      cleanMobile, // إرسال الرقم المنظف
-      customRegex: firebaseConfig.mobileRegex,
+      mobile,
     );
     if (mobileError != null) {
       emit(LoginFailure(mobileError));
       return;
     }
+
 
     final passwordError = Validators.validatePassword(
       password,

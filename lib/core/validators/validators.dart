@@ -1,23 +1,29 @@
 class Validators {
-  static String? validateMobile(String? value, {String? customRegex}) {
+  static String? validateMobile(String? value) {
+    // Expecting the full E.164 format like +962790119723
+    const String pattern =
+        r'^\+9627[789]\d{7}$'; // Adjust regex based on valid Jordanian mobile prefixes (77, 78, 79)
+    final RegExp regex = RegExp(pattern);
+
     if (value == null || value.trim().isEmpty) {
       return 'Mobile number is required';
     }
 
-    if (value.trim().length != 9) {
-      return 'Mobile number must be 9 digits';
+    final String trimmedValue = value.trim();
+
+    if (!trimmedValue.startsWith('+962')) {
+      return 'Mobile number must start with +962';
     }
 
-    if (!value.trim().startsWith('7')) {
-      return 'Mobile number must start with 7';
+    // Length check for +962 followed by 9 digits
+    if (trimmedValue.length != 13) {
+      return 'Mobile number must be in the format +962XXXXXXXXX (13 digits total)';
     }
 
-    final regexPattern = customRegex ?? r'^7[0-8]{8}$';
-    final correctRegex = RegExp(regexPattern);
-
-    if (!correctRegex.hasMatch(value.trim())) {
-      return 'Invalid mobile number format';
+    if (!regex.hasMatch(trimmedValue)) {
+      return 'Invalid Jordanian mobile number format (e.g., +9627XXXXXXXX)';
     }
+
     return null;
   }
 

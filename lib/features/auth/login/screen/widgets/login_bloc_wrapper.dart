@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_task_app/features/auth/login/cubit/login_cubit.dart';
@@ -22,8 +21,8 @@ class LoginBlocWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<LoginCubit, LoginState>(
       listener: (context, state) {
-        final snackBarHandler = LoginSnackBarHandler();
-        snackBarHandler.handleLoginState(context, state);
+             final snackBarHandler = LoginSnackBarHandler();
+            snackBarHandler.handleLoginState(context, state);
       },
       child: child,
     );

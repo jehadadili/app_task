@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_task_app/core/extensions/navigation_extension.dart';
 import 'package:flutter_task_app/features/auth/login/cubit/login_state.dart';
@@ -27,20 +26,15 @@ class LoginSnackBarHandler {
   }
 
   void _showErrorSnackBar(BuildContext context, String error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(error),
-        backgroundColor: Colors.red,
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error), backgroundColor: Colors.red));
   }
 
   void _showNotRegisteredSnackBar(BuildContext context, String mobileNumber) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          'User not registered with mobile: $mobileNumber',
-        ),
+        content: Text('User not registered with mobile: $mobileNumber'),
         backgroundColor: Colors.orange,
         action: SnackBarAction(
           label: 'Register',
