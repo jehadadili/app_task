@@ -1,35 +1,33 @@
 
-import 'package:flutter_task_app/features/quiz/model/matching_quiz_item.dart';
-import 'package:flutter_task_app/features/quiz/model/question.dart';
+import 'package:flutter_task_app/features/quiz/model/question_model.dart';
 
-class MatchingQuizQuestion extends Question {
-  final List<MatchingQuizItem> leftItems;
-  final List<MatchingQuizItem> rightItems;
-  final Map<String, String> correctPairs;
+class MatchingQuestion extends QuestionModel {
+  final List<String> leftItems;
+  final List<String> rightItems;
+  final Map<String, String> correctMatches;
 
-  MatchingQuizQuestion({
+  const MatchingQuestion({
     required super.id,
-    required super.questionText, 
+    required super.text,
+    required super.order,
+    required super.timeLimit,
     required this.leftItems,
     required this.rightItems,
-    required this.correctPairs,
-    required super.timeLimitSeconds,
-  }) : super(
-            type: "matching");
+    required this.correctMatches,
+  }) : super(type: 'matching');
 
-  factory MatchingQuizQuestion.fromFirestore(Map<String, dynamic> data, String id) {
-     List<MatchingQuizItem> parseItems(List<dynamic>? itemList) {
-        if (itemList == null) return [];
-        return itemList.map((item) => MatchingQuizItem.fromMap(Map<String, dynamic>.from(item))).toList();
-     }
-
-    return MatchingQuizQuestion(
-      id: id,
-      questionText: data["questionText"] ?? "Match the pairs",
-      leftItems: parseItems(data["leftItems"]),
-      rightItems: parseItems(data["rightItems"]),
-      correctPairs: Map<String, String>.from(data["correctPairs"] ?? {}),
-      timeLimitSeconds: data["timeLimitSeconds"] ?? 120, 
+  factory MatchingQuestion.fromFirestore(Map<String, dynamic> data) {
+    return MatchingQuestion(
+      id: data['id'] ?? '',
+      text: data['text'] ?? '',
+      order: data['order'] ?? 0,
+      timeLimit: data['timeLimit'] ?? 45,
+      leftItems: List<String>.from(data['leftItems'] ?? []),
+      rightItems: List<String>.from(data['rightItems'] ?? []),
+      correctMatches: Map<String, String>.from(data['correctMatches'] ?? {}),
     );
   }
+
+  @override
+  List<Object?> get props => [...super.props, leftItems, rightItems, correctMatches];
 }

@@ -1,52 +1,44 @@
 import 'dart:developer';
-
-import 'package:bloc/bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_task_app/features/posts/cubit/posts_state.dart';
-import 'package:flutter_task_app/features/posts/model/post_model.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
+import 'package:flutter_task_app/features/posts/repository/posts_repository.dart';
 
 class PostsCubit extends Cubit<PostsState> {
-  PostsCubit() : super(PostsInitial()) {
-    fetchPosts(); 
-  }
+  final PostsRepository _repository;
 
-  List<PostModel> _allPosts = []; 
+  PostsCubit(this._repository) : super(PostsInitial()) {
+    fetchPosts();
+  }
 
   Future<void> fetchPosts() async {
     emit(PostsLoading());
     try {
-      final response = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/posts'));
-
-      if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
-        _allPosts = data.map((json) => PostModel.fromJson(json)).toList();
-        emit(PostsLoaded(_allPosts, _allPosts));
-      } else {
-        emit(PostsError('Failed to load posts. Status code: ${response.statusCode}')); 
-      }
+      final posts = await _repository.fetchPosts();
+      emit(PostsLoaded(posts, posts));
     } catch (e) {
-      emit(PostsError('Failed to load posts: ${e.toString()}')); 
+      log('Error: $e');
+      final mockPosts = _repository.getMockPosts();
+      emit(PostsLoaded(mockPosts, mockPosts));
     }
+  }
+
+  Future<void> retryFetch() async {
+    await Future.delayed(Duration(seconds: 2));
+    fetchPosts();
   }
 
   void filterPosts(String query) {
     if (state is PostsLoaded) {
-      final currentState = state as PostsLoaded;
-      if (query.isEmpty) {
-        emit(PostsLoaded(currentState.allPosts, currentState.allPosts));
-      } else {
-        final filtered = currentState.allPosts.where((post) {
-          final titleLower = post.title.toLowerCase();
-          final bodyLower = post.body.toLowerCase();
-          final queryLower = query.toLowerCase();
-          return titleLower.contains(queryLower) || bodyLower.contains(queryLower);
-        }).toList();
-        emit(PostsLoaded(currentState.allPosts, filtered));
-      }
-    } else {
-      log("Cannot filter posts: Posts not loaded yet.");
+      final current = state as PostsLoaded;
+      final allPosts = current.allPosts;
+      final filtered = query.isEmpty
+          ? allPosts
+          : allPosts.where((post) {
+              final q = query.toLowerCase();
+              return post.title.toLowerCase().contains(q) ||
+                  post.body.toLowerCase().contains(q);
+            }).toList();
+      emit(PostsLoaded(allPosts, filtered));
     }
   }
 }

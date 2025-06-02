@@ -18,7 +18,6 @@ class OtpCubit extends Cubit<OtpState> {
     emit(OtpVerifying());
 
     try {
-      // استدعاء التحقق من الـ OTP في RegisterCubit
       await registerCubit.verifyOtpAndCompleteRegistration(otpCode);
       emit(OtpVerificationSuccess());
     } catch (e) {

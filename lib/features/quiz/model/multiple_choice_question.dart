@@ -1,26 +1,29 @@
+import 'package:flutter_task_app/features/quiz/model/question_model.dart';
 
-import 'package:flutter_task_app/features/quiz/model/question.dart';
-
-class MultipleChoiceQuestion extends Question {
+class MultipleChoiceQuestion extends QuestionModel {
   final List<String> options;
-  final int correctAnswerIndex; // Index of the correct option
+  final String correctAnswer;
 
-  MultipleChoiceQuestion({
+  const MultipleChoiceQuestion({
     required super.id,
-    required super.questionText,
+    required super.text,
+    required super.order,
+    required super.timeLimit,
     required this.options,
-    required this.correctAnswerIndex,
-    required super.timeLimitSeconds,
-  }) : super(
-            type: "multiple_choice");
+    required this.correctAnswer,
+  }) : super(type: 'multiple_choice');
 
-  factory MultipleChoiceQuestion.fromFirestore(Map<String, dynamic> data, String id) {
+  factory MultipleChoiceQuestion.fromFirestore(Map<String, dynamic> data) {
     return MultipleChoiceQuestion(
-      id: id,
-      questionText: data["questionText"] ?? "Missing question text",
-      options: List<String>.from(data["options"] ?? []),
-      correctAnswerIndex: data["correctAnswerIndex"] ?? -1,
-      timeLimitSeconds: data["timeLimitSeconds"] ?? 60, 
+      id: data['id'] ?? '',
+      text: data['text'] ?? '',
+      order: data['order'] ?? 0,
+      timeLimit: data['timeLimit'] ?? 30,
+      options: List<String>.from(data['options'] ?? []),
+      correctAnswer: data['correctAnswer'] ?? '',
     );
   }
+
+  @override
+  List<Object?> get props => [...super.props, options, correctAnswer];
 }

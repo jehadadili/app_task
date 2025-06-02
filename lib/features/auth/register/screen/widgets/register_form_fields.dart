@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_task_app/core/validators/validators.dart';
 import 'package:flutter_task_app/core/widgets/mobile_input_field.dart';
-import 'package:flutter_task_app/features/auth/widgets/age_field.dart';
-import 'package:flutter_task_app/features/auth/widgets/gender_dropdown_field.dart';
-import 'package:flutter_task_app/features/auth/widgets/name_field.dart';
-import 'package:flutter_task_app/features/auth/widgets/password_field.dart';
+import 'package:flutter_task_app/features/auth/shared/age_field.dart';
+import 'package:flutter_task_app/features/auth/shared/gender_dropdown_field.dart';
+import 'package:flutter_task_app/features/auth/shared/name_field.dart';
+import 'package:flutter_task_app/features/auth/shared/password_field.dart';
 
 class RegisterFormFields extends StatelessWidget {
   final TextEditingController fullNameController;

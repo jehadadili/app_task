@@ -6,7 +6,7 @@ class UserProfile {
   final String mobile;
   final int age;
   final String gender;
-  final String email; 
+  final String email;
 
   UserProfile({
     required this.uid,
@@ -25,7 +25,7 @@ class UserProfile {
       mobile: data['mobile'] ?? 'N/A',
       age: data['age'] ?? 0,
       gender: data['gender'] ?? 'N/A',
-      email: data['email'] ?? 'N/A', 
+      email: data['email'] ?? 'N/A',
     );
   }
 }

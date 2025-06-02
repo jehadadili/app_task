@@ -1,6 +1,6 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:flutter_task_app/features/quiz/cubit/quiz_cubit.dart';
 import 'package:flutter_task_app/features/quiz/cubit/quiz_state.dart';
 import 'package:flutter_task_app/features/quiz/model/drag_drop_quiz_question.dart';
@@ -13,18 +13,6 @@ import 'package:flutter_task_app/features/quiz/view/widgets/matching_quiz_widget
 import 'package:flutter_task_app/features/quiz/view/widgets/multiple_choice_widget.dart';
 import 'package:flutter_task_app/features/quiz/view/widgets/progress_indicator_widget.dart';
 import 'package:flutter_task_app/features/quiz/view/widgets/quiz_timer_widget.dart';
-
-class QuizScreen extends StatelessWidget {
-  const QuizScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => QuizCubit()..loadQuiz(),
-      child: const QuizView(),
-    );
-  }
-}
 
 class QuizView extends StatelessWidget {
   const QuizView({super.key});
@@ -99,13 +87,11 @@ class QuizView extends StatelessWidget {
             return SafeArea(
               child: Column(
                 children: [
-                  // Progress Indicator
                   ProgressIndicatorWidget(
                     currentQuestion: state.currentQuestionIndex,
                     totalQuestions: state.questions.length,
                   ),
 
-                  // Timer
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: QuizTimerWidget(

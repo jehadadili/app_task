@@ -8,7 +8,7 @@ class LoginSnackBarHandler {
   void handleLoginState(BuildContext context, LoginState state) {
     if (state is LoginSuccess) {
       _showSuccessSnackBar(context);
-      context.pushReplacement(pushReplacement: HomeScreen());
+      context.pushReplacement(pushReplacement: const HomeScreen());
     } else if (state is LoginFailure) {
       _showErrorSnackBar(context, state.error);
     } else if (state is LoginUserNotRegistered) {
@@ -39,7 +39,7 @@ class LoginSnackBarHandler {
         action: SnackBarAction(
           label: 'Register',
           onPressed: () {
-            context.pushReplacement(pushReplacement: RegisterScreen());
+            context.pushReplacement(pushReplacement: const RegisterScreen());
           },
         ),
       ),

@@ -1,49 +1,69 @@
 
-import 'package:flutter_task_app/features/quiz/model/question.dart';
+import 'package:equatable/equatable.dart';
+import 'package:flutter_task_app/features/quiz/model/question_model.dart';
 import 'package:flutter_task_app/features/quiz/model/quiz_answer.dart';
+import 'package:flutter_task_app/features/quiz/model/quiz_result_model.dart';
 
+abstract class QuizState extends Equatable {
+  const QuizState();
 
-
-abstract class QuizState {}
+  @override
+  List<Object?> get props => [];
+}
 
 class QuizInitial extends QuizState {}
 
 class QuizLoading extends QuizState {}
 
-class QuizError extends QuizState {
-  final String message;
-  QuizError(this.message);
-}
-
-class QuizInProgress extends QuizState {
-  final List<Question> questions;
+class QuizLoaded extends QuizState {
+  final List<QuestionModel> questions;
   final int currentQuestionIndex;
-  final Map<String, QuizAnswer> userAnswers; 
-  final int remainingTimeSeconds; 
-  final bool answerSubmitted; 
+  final List<AnswerModel> answers;
+  final int remainingTime;
+  final bool isQuestionAnswered;
 
-  QuizInProgress({
+  const QuizLoaded({
     required this.questions,
     required this.currentQuestionIndex,
-    required this.userAnswers,
-    required this.remainingTimeSeconds,
-    this.answerSubmitted = false,
+    required this.answers,
+    required this.remainingTime,
+    this.isQuestionAnswered = false,
   });
 
-  Question get currentQuestion => questions[currentQuestionIndex];
-  double get progress => (currentQuestionIndex + 1) / questions.length;
+  QuizLoaded copyWith({
+    List<QuestionModel>? questions,
+    int? currentQuestionIndex,
+    List<AnswerModel>? answers,
+    int? remainingTime,
+    bool? isQuestionAnswered,
+  }) {
+    return QuizLoaded(
+      questions: questions ?? this.questions,
+      currentQuestionIndex: currentQuestionIndex ?? this.currentQuestionIndex,
+      answers: answers ?? this.answers,
+      remainingTime: remainingTime ?? this.remainingTime,
+      isQuestionAnswered: isQuestionAnswered ?? this.isQuestionAnswered,
+    );
+  }
+
+  @override
+  List<Object?> get props => [questions, currentQuestionIndex, answers, remainingTime, isQuestionAnswered];
 }
 
-class QuizFinished extends QuizState {
-  final List<Question> questions;
-  final Map<String, QuizAnswer> userAnswers;
-  final int finalScore;
-  final int totalQuestions;
+class QuizCompleted extends QuizState {
+  final QuizResultModel result;
 
-  QuizFinished({
-    required this.questions,
-    required this.userAnswers,
-    required this.finalScore,
-    required this.totalQuestions,
-  });
+  const QuizCompleted({required this.result});
+
+  @override
+  List<Object?> get props => [result];
+}
+
+class QuizError extends QuizState {
+  final String message;
+
+  const QuizError({required this.message});
+
+  @override
+  List<Object?> get props => [message];
 }

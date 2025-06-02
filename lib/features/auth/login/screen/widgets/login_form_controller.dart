@@ -7,15 +7,12 @@ class LoginFormController {
   final FocusNode mobileFocusNode = FocusNode();
   final FocusNode passwordFocusNode = FocusNode();
 
-  // Store the selected country code
-  CountryCode selectedCountry = CountryCode.fromCountryCode('JO'); // Default to Jordan
+  CountryCode selectedCountry = CountryCode.fromCountryCode('JO');
 
-  // Method to update the selected country code
   void updateSelectedCountry(CountryCode country) {
     selectedCountry = country;
   }
 
-  // Getter for the full E.164 mobile number
   String get fullMobileNumber => '${selectedCountry.dialCode}${mobileController.text.trim()}';
 
   void dispose() {

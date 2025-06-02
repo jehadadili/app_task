@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class DraggableWordWidget extends StatelessWidget {
   final String word;
 
-  const DraggableWordWidget({
-    super.key,
-    required this.word,
-  });
+  const DraggableWordWidget({super.key, required this.word});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +22,7 @@ class DraggableWordWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.blueAccent,
+          color: Color(0xff152e67),
           borderRadius: BorderRadius.circular(8.0),
         ),
         child: Text(
@@ -50,10 +47,7 @@ class DraggableWordWidget extends StatelessWidget {
       ),
       child: Text(
         word,
-        style: const TextStyle(
-          color: Colors.black38,
-          fontSize: 16,
-        ),
+        style: const TextStyle(color: Colors.black38, fontSize: 16),
       ),
     );
   }
@@ -68,12 +62,8 @@ class DraggableWordWidget extends StatelessWidget {
       ),
       child: Text(
         word,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
     );
   }
 }
-

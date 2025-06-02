@@ -7,7 +7,6 @@ import 'package:flutter_task_app/features/drag_drop/screen/widgets/drag_options_
 import 'package:flutter_task_app/features/drag_drop/screen/widgets/result_message_widget.dart';
 import 'package:flutter_task_app/features/drag_drop/screen/widgets/sentence_area_widget.dart';
 
-
 class DragDropExercisePage extends StatelessWidget {
   const DragDropExercisePage({super.key});
 
@@ -15,8 +14,18 @@ class DragDropExercisePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Drag and Drop Exercise'),
-        backgroundColor: Colors.blue[100],
+        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
+        title: const Text(
+          'Drag and Drop Exercise',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+
+        backgroundColor: Color(0xff152e67),
       ),
       body: BlocBuilder<DragDropCubit, DragDropState>(
         builder: (context, state) {
@@ -30,21 +39,21 @@ class DragDropExercisePage extends StatelessWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
-                
+
                 SentenceAreaWidget(state: state),
-                
+
                 const SizedBox(height: 40),
-                
+
                 ResultMessageWidget(state: state),
-                
+
                 const SizedBox(height: 20),
-                
+
                 DragOptionsWidget(state: state),
-                
+
                 const Spacer(),
-                
+
                 ControlButtonsWidget(state: state),
-                
+
                 const SizedBox(height: 20),
               ],
             ),

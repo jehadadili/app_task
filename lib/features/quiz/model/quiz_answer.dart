@@ -1,13 +1,18 @@
-class QuizAnswer {
-  final String questionId;
-  final dynamic answer; 
-  final bool isCorrect;
-  final int timeTakenSeconds;
+import 'package:equatable/equatable.dart';
 
-  QuizAnswer({
+class AnswerModel extends Equatable {
+  final String questionId;
+  final dynamic answer;
+  final int timeTaken; 
+  final bool isCorrect;
+
+  const AnswerModel({
     required this.questionId,
     required this.answer,
+    required this.timeTaken,
     required this.isCorrect,
-    required this.timeTakenSeconds,
   });
+
+  @override
+  List<Object?> get props => [questionId, answer, timeTaken, isCorrect];
 }

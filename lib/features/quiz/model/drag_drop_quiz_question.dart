@@ -1,28 +1,34 @@
 
-import 'package:flutter_task_app/features/quiz/model/question.dart';
 
-class DragDropQuizQuestion extends Question {
-  final String sentenceTemplate; 
-  final List<String> draggableOptions;
-  final String correctAnswer;
+import 'package:flutter_task_app/features/quiz/model/question_model.dart';
 
-  DragDropQuizQuestion({
+class DragDropQuestion extends QuestionModel {
+  final List<String> leftItems;
+  final List<String> rightItems;
+  final Map<String, String> correctPairs;
+
+  const DragDropQuestion({
     required super.id,
-    required this.sentenceTemplate,
-    required this.draggableOptions,
-    required this.correctAnswer,
-    required super.timeLimitSeconds,
-  }) : super(
-            type: "drag_drop",
-            questionText: sentenceTemplate);
+    required super.text,
+    required super.order,
+    required super.timeLimit,
+    required this.leftItems,
+    required this.rightItems,
+    required this.correctPairs,
+  }) : super(type: 'drag_drop');
 
-   factory DragDropQuizQuestion.fromFirestore(Map<String, dynamic> data, String id) {
-    return DragDropQuizQuestion(
-      id: id,
-      sentenceTemplate: data["sentenceTemplate"] ?? "_____",
-      draggableOptions: List<String>.from(data["draggableOptions"] ?? []),
-      correctAnswer: data["correctAnswer"] ?? "",
-      timeLimitSeconds: data["timeLimitSeconds"] ?? 90, // Default 90 seconds
+  factory DragDropQuestion.fromFirestore(Map<String, dynamic> data) {
+    return DragDropQuestion(
+      id: data['id'] ?? '',
+      text: data['text'] ?? '',
+      order: data['order'] ?? 0,
+      timeLimit: data['timeLimit'] ?? 60,
+      leftItems: List<String>.from(data['leftItems'] ?? []),
+      rightItems: List<String>.from(data['rightItems'] ?? []),
+      correctPairs: Map<String, String>.from(data['correctPairs'] ?? {}),
     );
   }
+
+  @override
+  List<Object?> get props => [...super.props, leftItems, rightItems, correctPairs];
 }

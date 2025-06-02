@@ -5,8 +5,8 @@ import 'package:flutter_task_app/features/auth/register/cubit/register_state.dar
 import 'package:flutter_task_app/features/auth/register/screen/widgets/register_form_fields.dart';
 import 'package:flutter_task_app/features/auth/register/screen/widgets/register_form_listener.dart';
 import 'package:flutter_task_app/features/auth/register/screen/widgets/register_form_submit_section.dart.dart';
-import 'package:flutter_task_app/features/auth/widgets/form_footer.dart';
-import 'package:flutter_task_app/features/auth/widgets/form_header.dart';
+import 'package:flutter_task_app/features/auth/shared/form_footer.dart';
+import 'package:flutter_task_app/features/auth/shared/form_header.dart';
 
 class RegisterForm extends StatefulWidget {
   final String? initialMobileNumber;

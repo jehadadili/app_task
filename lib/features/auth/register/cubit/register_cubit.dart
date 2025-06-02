@@ -20,21 +20,17 @@ class RegisterCubit extends Cubit<RegisterState> {
 
   RegisterCubit({required this.firebaseConfig}) : super(RegisterInitial());
 
-  // دالة موحدة لتنسيق رقم الهاتف للحفظ في قاعدة البيانات
   String _formatPhoneForDatabase(String mobile) {
-    // إزالة أي رموز أو مسافات موجودة
     String cleanMobile = mobile
         .replaceAll('+962', '')
         .replaceAll(' ', '')
         .replaceAll('-', '')
         .trim();
 
-    // التأكد من أن الرقم يبدأ بـ 7
     if (!cleanMobile.startsWith('7') && cleanMobile.length == 8) {
       cleanMobile = '7$cleanMobile';
     }
 
-    // تنسيق الرقم مثل Firebase: +962 7 9011 9723
     if (cleanMobile.length == 9) {
       String part1 = cleanMobile.substring(0, 1); // 7
       String part2 = cleanMobile.substring(1, 5); // 9011
@@ -42,11 +38,9 @@ class RegisterCubit extends Cubit<RegisterState> {
       return '+962 $part1 $part2 $part3';
     }
 
-    // إذا لم يكن التنسيق صحيح، إرجاع الرقم مع رمز البلد فقط
     return '+962 $cleanMobile';
   }
 
-  // دالة لتنسيق رقم الهاتف للـ Phone Auth (بدون مسافات)
   String _formatPhoneForAuth(String mobile) {
     String cleanMobile = mobile
         .replaceAll('+962', '')
@@ -54,7 +48,6 @@ class RegisterCubit extends Cubit<RegisterState> {
         .replaceAll('-', '')
         .trim();
 
-    // التأكد من أن الرقم يبدأ بـ 7
     if (!cleanMobile.startsWith('7') && cleanMobile.length == 8) {
       cleanMobile = '7$cleanMobile';
     }
@@ -62,7 +55,6 @@ class RegisterCubit extends Cubit<RegisterState> {
     return '+962$cleanMobile';
   }
 
-  // دالة للتحقق من صحة تنسيق الرقم
   bool _isValidPhoneNumber(String mobile) {
     String cleanMobile = mobile
         .replaceAll('+962', '')
@@ -70,7 +62,6 @@ class RegisterCubit extends Cubit<RegisterState> {
         .replaceAll('-', '')
         .trim();
 
-    // يجب أن يكون الرقم 9 أرقام ويبدأ بـ 7
     return cleanMobile.length == 9 && cleanMobile.startsWith('7');
   }
 
@@ -84,14 +75,12 @@ class RegisterCubit extends Cubit<RegisterState> {
   }) async {
     emit(RegisterLoading());
 
-    // التحقق من صحة البيانات
     final nameError = Validators.validateName(fullName);
     if (nameError != null) {
       emit(RegisterFailure(nameError));
       return;
     }
 
-    // التحقق من صحة رقم الهاتف
     if (!_isValidPhoneNumber(mobile)) {
       emit(RegisterFailure('رقم الهاتف يجب أن يكون 9 أرقام ويبدأ بـ 7'));
       return;
@@ -135,12 +124,9 @@ class RegisterCubit extends Cubit<RegisterState> {
     }
 
     try {
-      // تنسيق الرقم للحفظ في قاعدة البيانات
       String formattedMobileForDB = _formatPhoneForDatabase(mobile);
-      // تنسيق الرقم للـ Phone Auth
       String formattedMobileForAuth = _formatPhoneForAuth(mobile);
 
-      // التحقق من وجود المستخدم مسبقاً
       var existingUserQuery = await _firestore
           .collection('users')
           .where('mobile', isEqualTo: formattedMobileForDB)
@@ -152,7 +138,6 @@ class RegisterCubit extends Cubit<RegisterState> {
         return;
       }
 
-      // حفظ البيانات المؤقتة
       _tempFullName = fullName;
       _tempMobile = formattedMobileForDB;
       _tempAge = age;
@@ -301,15 +286,14 @@ class RegisterCubit extends Cubit<RegisterState> {
       log("Saving user data to Firestore...");
       log("Mobile format for DB: $_tempMobile");
 
-      // حفظ بيانات المستخدم في Firestore
       await _firestore.collection('users').doc(currentUser.uid).set({
         'uid': currentUser.uid,
         'fullName': _tempFullName,
-        'mobile': _tempMobile, // الرقم بتنسيق Firebase مع المسافات
+        'mobile': _tempMobile, 
         'age': _tempAge,
         'gender': _tempGender,
         'phoneNumber':
-            currentUser.phoneNumber, // الرقم المتحقق منه من Firebase Auth
+            currentUser.phoneNumber, 
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -339,7 +323,6 @@ class RegisterCubit extends Cubit<RegisterState> {
 
   Future<void> resendOtp() async {
     if (_tempMobile != null) {
-      // تحويل الرقم من تنسيق قاعدة البيانات إلى تنسيق Phone Auth
       String phoneForAuth = _tempMobile!.replaceAll(' ', '');
       await _sendOtpCode(phoneForAuth);
     } else {

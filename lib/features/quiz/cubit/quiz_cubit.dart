@@ -1,202 +1,211 @@
+
 import 'dart:async';
-import 'dart:developer' show log;
+
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_task_app/features/quiz/cubit/quiz_state.dart';
 import 'package:flutter_task_app/features/quiz/model/drag_drop_quiz_question.dart';
 import 'package:flutter_task_app/features/quiz/model/matching_quiz_question.dart';
 import 'package:flutter_task_app/features/quiz/model/multiple_choice_question.dart';
-import 'package:flutter_task_app/features/quiz/model/question.dart';
+import 'package:flutter_task_app/features/quiz/model/question_model.dart';
 import 'package:flutter_task_app/features/quiz/model/quiz_answer.dart';
+import 'package:flutter_task_app/features/quiz/model/quiz_result_model.dart';
 
 class QuizCubit extends Cubit<QuizState> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Timer? _questionTimer;
+  final FirebaseFirestore _firestore;
+  Timer? _timer;
+  DateTime? _questionStartTime;
 
-  QuizCubit() : super(QuizInitial());
+  QuizCubit({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        super(QuizInitial());
 
-  @override
-  Future<void> close() {
-    _questionTimer?.cancel();
-    return super.close();
-  }
-
-  Future<void> startQuiz(String quizId) async {
-    emit(QuizLoading());
+  Future<void> loadQuiz() async {
     try {
-      QuerySnapshot questionSnapshot = await _firestore
+      emit(QuizLoading());
+      
+      final snapshot = await _firestore
           .collection('quizzes')
-          .doc(quizId)
+          .doc('quiz_001')
           .collection('questions')
           .orderBy('order')
           .get();
 
-      if (questionSnapshot.docs.isEmpty) {
-        emit(QuizError("No questions found for this quiz."));
+      if (snapshot.docs.isEmpty) {
+        emit(const QuizError(message: 'No questions found'));
         return;
       }
 
-      List<Question> questions = questionSnapshot.docs
-          .map(
-            (doc) => Question.fromFirestore(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            ),
-          )
+      final questions = snapshot.docs
+          .map((doc) => QuestionModel.fromFirestore(doc.data()))
           .toList();
 
-      if (questions.isEmpty) {
-        emit(QuizError("Failed to parse questions."));
-        return;
-      }
-
-      _startQuestionTimer(questions[0].timeLimitSeconds);
-      emit(
-        QuizInProgress(
-          questions: questions,
-          currentQuestionIndex: 0,
-          userAnswers: {},
-          remainingTimeSeconds: questions[0].timeLimitSeconds,
-        ),
-      );
-    } catch (e) {
-      emit(QuizError("Failed to load quiz: ${e.toString()}"));
-    }
-  }
-
-  void _startQuestionTimer(int seconds) {
-    _questionTimer?.cancel();
-    int remaining = seconds;
-    _questionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state is QuizInProgress) {
-        final currentState = state as QuizInProgress;
-        if (remaining > 0) {
-          remaining--;
-          emit(
-            QuizInProgress(
-              questions: currentState.questions,
-              currentQuestionIndex: currentState.currentQuestionIndex,
-              userAnswers: currentState.userAnswers,
-              remainingTimeSeconds: remaining,
-              answerSubmitted: currentState.answerSubmitted,
-            ),
-          );
-        } else {
-          timer.cancel();
-          submitAnswer(null);
-        }
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
-  void submitAnswer(dynamic userAnswer) {
-    if (state is QuizInProgress) {
-      final currentState = state as QuizInProgress;
-      _questionTimer?.cancel();
-
-      final currentQuestion = currentState.currentQuestion;
-      bool isCorrect = false;
-      int timeTaken =
-          currentQuestion.timeLimitSeconds - currentState.remainingTimeSeconds;
-
-      if (userAnswer != null) {
-        if (currentQuestion is MultipleChoiceQuestion) {
-          isCorrect = userAnswer == currentQuestion.correctAnswerIndex;
-        } else if (currentQuestion is DragDropQuizQuestion) {
-          isCorrect = userAnswer == currentQuestion.correctAnswer;
-        } else if (currentQuestion is MatchingQuizQuestion) {
-          if (userAnswer is Map<String, String>) {
-            Map<String, String> userPairs = userAnswer;
-            Map<String, String> correctPairs = currentQuestion.correctPairs;
-            if (userPairs.length == correctPairs.length) {
-              isCorrect = userPairs.entries.every(
-                (entry) => correctPairs[entry.key] == entry.value,
-              );
-            } else {
-              isCorrect = false;
-            }
-          } else {
-            isCorrect = false;
-          }
-        }
-      }
-
-      final answer = QuizAnswer(
-        questionId: currentQuestion.id,
-        answer: userAnswer,
-        isCorrect: isCorrect,
-        timeTakenSeconds: timeTaken,
-      );
-
-      Map<String, QuizAnswer> updatedAnswers = Map.from(
-        currentState.userAnswers,
-      );
-      updatedAnswers[currentQuestion.id] = answer;
-
-      emit(
-        QuizInProgress(
-          questions: currentState.questions,
-          currentQuestionIndex: currentState.currentQuestionIndex,
-          userAnswers: updatedAnswers,
-          remainingTimeSeconds: currentState.remainingTimeSeconds,
-          answerSubmitted: true,
-        ),
-      );
-    } else {
-      log("Cannot submit answer: Quiz not in progress.");
-    }
-  }
-
-  void moveToNextQuestion() {
-    if (state is QuizInProgress) {
-      final currentState = state as QuizInProgress;
-
-      if (!currentState.answerSubmitted) {
-        log("Warning: Moving to next question before submitting answer.");
-      }
-
-      int nextIndex = currentState.currentQuestionIndex + 1;
-      if (nextIndex < currentState.questions.length) {
-        final nextQuestion = currentState.questions[nextIndex];
-        _startQuestionTimer(nextQuestion.timeLimitSeconds);
-        emit(
-          QuizInProgress(
-            questions: currentState.questions,
-            currentQuestionIndex: nextIndex,
-            userAnswers: currentState.userAnswers,
-            remainingTimeSeconds: nextQuestion.timeLimitSeconds,
-            answerSubmitted: false,
-          ),
-        );
-      } else {
-        _finishQuiz(currentState.questions, currentState.userAnswers);
-      }
-    } else {
-      log("Cannot move to next question: Quiz not in progress.");
-    }
-  }
-
-  void _finishQuiz(
-    List<Question> questions,
-    Map<String, QuizAnswer> userAnswers,
-  ) {
-    _questionTimer?.cancel();
-    int score = 0;
-    userAnswers.forEach((_, answer) {
-      if (answer.isCorrect) {
-        score++;
-      }
-    });
-
-    emit(
-      QuizFinished(
+      emit(QuizLoaded(
         questions: questions,
-        userAnswers: userAnswers,
-        finalScore: score,
-        totalQuestions: questions.length,
-      ),
+        currentQuestionIndex: 0,
+        answers: [],
+        remainingTime: questions.first.timeLimit,
+      ));
+
+      _startTimer(questions.first.timeLimit);
+      _questionStartTime = DateTime.now();
+    } catch (e) {
+      emit(QuizError(message: 'Failed to load quiz: $e'));
+    }
+  }
+
+  void _startTimer(int timeLimit) {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final currentState = state;
+      if (currentState is QuizLoaded) {
+        if (currentState.remainingTime <= 1) {
+          _timeUp();
+        } else {
+          emit(currentState.copyWith(remainingTime: currentState.remainingTime - 1));
+        }
+      }
+    });
+  }
+
+  void _timeUp() {
+    final currentState = state;
+    if (currentState is QuizLoaded && !currentState.isQuestionAnswered) {
+      final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
+      final timeTaken = _calculateTimeTaken(currentQuestion.timeLimit);
+      
+      final answer = AnswerModel(
+        questionId: currentQuestion.id,
+        answer: null,
+        timeTaken: timeTaken,
+        isCorrect: false,
+      );
+
+      _processAnswer(answer);
+    }
+  }
+
+  int _calculateTimeTaken(int timeLimit) {
+    if (_questionStartTime == null) return timeLimit;
+    return DateTime.now().difference(_questionStartTime!).inSeconds;
+  }
+
+  void submitAnswer(dynamic answer) {
+    final currentState = state;
+    if (currentState is! QuizLoaded || currentState.isQuestionAnswered) return;
+
+    final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
+    final timeTaken = _calculateTimeTaken(currentQuestion.timeLimit);
+    final isCorrect = _checkAnswer(currentQuestion, answer);
+
+    final answerModel = AnswerModel(
+      questionId: currentQuestion.id,
+      answer: answer,
+      timeTaken: timeTaken,
+      isCorrect: isCorrect,
     );
+
+    _processAnswer(answerModel);
+  }
+
+  void _processAnswer(AnswerModel answer) {
+    final currentState = state as QuizLoaded;
+    final updatedAnswers = [...currentState.answers, answer];
+
+    emit(currentState.copyWith(
+      answers: updatedAnswers,
+      isQuestionAnswered: true,
+    ));
+
+    _timer?.cancel();
+
+    // Auto-advance after 2 seconds
+    Timer(const Duration(seconds: 2), () {
+      nextQuestion();
+    });
+  }
+
+  bool _checkAnswer(QuestionModel question, dynamic answer) {
+    switch (question.type) {
+      case 'multiple_choice':
+        final mcq = question as MultipleChoiceQuestion;
+        return mcq.correctAnswer == answer;
+      case 'drag_drop':
+        final ddq = question as DragDropQuestion;
+        if (answer is Map<String, String>) {
+          return _mapsEqual(ddq.correctPairs, answer);
+        }
+        return false;
+      case 'matching':
+        final mq = question as MatchingQuestion;
+        if (answer is Map<String, String>) {
+          return _mapsEqual(mq.correctMatches, answer);
+        }
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  bool _mapsEqual(Map<String, String> map1, Map<String, String> map2) {
+    if (map1.length != map2.length) return false;
+    for (final key in map1.keys) {
+      if (map1[key] != map2[key]) return false;
+    }
+    return true;
+  }
+
+  void nextQuestion() {
+    final currentState = state;
+    if (currentState is! QuizLoaded) return;
+
+    if (currentState.currentQuestionIndex < currentState.questions.length - 1) {
+      final nextIndex = currentState.currentQuestionIndex + 1;
+      final nextQuestion = currentState.questions[nextIndex];
+
+      emit(currentState.copyWith(
+        currentQuestionIndex: nextIndex,
+        remainingTime: nextQuestion.timeLimit,
+        isQuestionAnswered: false,
+      ));
+
+      _startTimer(nextQuestion.timeLimit);
+      _questionStartTime = DateTime.now();
+    } else {
+      _completeQuiz();
+    }
+  }
+
+  void _completeQuiz() {
+    final currentState = state as QuizLoaded;
+    final totalScore = currentState.answers.where((a) => a.isCorrect).length;
+    final totalQuestions = currentState.questions.length;
+    final totalTimeTaken = currentState.answers.fold<int>(0, (sum, a) => sum + a.timeTaken);
+    final percentage = (totalScore / totalQuestions) * 100;
+
+    final result = QuizResultModel(
+      answers: currentState.answers,
+      totalScore: totalScore,
+      totalQuestions: totalQuestions,
+      totalTimeTaken: totalTimeTaken,
+      percentage: percentage,
+    );
+
+    _timer?.cancel();
+    emit(QuizCompleted(result: result));
+  }
+
+  void restartQuiz() {
+    _timer?.cancel();
+    _questionStartTime = null;
+    emit(QuizInitial());
+    loadQuiz();
+  }
+
+  @override
+  Future<void> close() {
+    _timer?.cancel();
+    return super.close();
   }
 }
+

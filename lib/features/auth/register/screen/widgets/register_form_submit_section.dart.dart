@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_task_app/core/extensions/navigation_extension.dart';
 import 'package:flutter_task_app/core/widgets/loading_button.dart';
 import 'package:flutter_task_app/features/auth/login/screen/login_screen.dart';
-import 'package:flutter_task_app/features/auth/widgets/form_footer.dart';
+import 'package:flutter_task_app/features/auth/shared/form_footer.dart';
 
 class RegisterFormSubmitSection extends StatelessWidget {
   final bool isLoading;
