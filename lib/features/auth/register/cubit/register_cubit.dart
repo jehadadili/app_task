@@ -1,69 +1,32 @@
 import 'dart:developer';
-
 import 'package:bloc/bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_task_app/core/config/firebase_config.dart';
-import 'package:flutter_task_app/core/validators/validators.dart';
 import 'package:flutter_task_app/features/auth/register/cubit/register_state.dart';
+import 'package:flutter_task_app/features/auth/register/model/registration_data.dart';
+import 'package:flutter_task_app/features/auth/register/screen/widgets/registration_validator.dart';
+import 'package:flutter_task_app/features/auth/register/services/otp_service.dart';
+import 'package:flutter_task_app/features/auth/register/services/phone_formatter.dart';
+import 'package:flutter_task_app/features/auth/register/services/user_repository.dart';
 
 class RegisterCubit extends Cubit<RegisterState> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseConfig firebaseConfig;
-  String? _tempFullName;
-  String? _tempMobile;
-  int? _tempAge;
-  String? _tempGender;
-  String? _tempPassword;
-  String? _verificationId;
+  final RegistrationValidator _validator;
+  final OtpService _otpService;
+  final UserRepository _userRepository;
 
-  RegisterCubit({required this.firebaseConfig}) : super(RegisterInitial());
+  RegistrationData? _tempRegistrationData;
 
-  String _formatPhoneForDatabase(String mobile) {
-    String cleanMobile = mobile
-        .replaceAll('+962', '')
-        .replaceAll(' ', '')
-        .replaceAll('-', '')
-        .trim();
-
-    if (!cleanMobile.startsWith('7') && cleanMobile.length == 8) {
-      cleanMobile = '7$cleanMobile';
-    }
-
-    if (cleanMobile.length == 9) {
-      String part1 = cleanMobile.substring(0, 1); // 7
-      String part2 = cleanMobile.substring(1, 5); // 9011
-      String part3 = cleanMobile.substring(5); // 9723
-      return '+962 $part1 $part2 $part3';
-    }
-
-    return '+962 $cleanMobile';
-  }
-
-  String _formatPhoneForAuth(String mobile) {
-    String cleanMobile = mobile
-        .replaceAll('+962', '')
-        .replaceAll(' ', '')
-        .replaceAll('-', '')
-        .trim();
-
-    if (!cleanMobile.startsWith('7') && cleanMobile.length == 8) {
-      cleanMobile = '7$cleanMobile';
-    }
-
-    return '+962$cleanMobile';
-  }
-
-  bool _isValidPhoneNumber(String mobile) {
-    String cleanMobile = mobile
-        .replaceAll('+962', '')
-        .replaceAll(' ', '')
-        .replaceAll('-', '')
-        .trim();
-
-    return cleanMobile.length == 9 && cleanMobile.startsWith('7');
-  }
+  RegisterCubit({
+    required this.firebaseConfig,
+    RegistrationValidator? validator,
+    OtpService? otpService,
+    UserRepository? userRepository,
+  }) : _validator =
+           validator ?? RegistrationValidator(firebaseConfig: firebaseConfig),
+       _otpService = otpService ?? OtpService(),
+       _userRepository = userRepository ?? UserRepository(),
+       super(RegisterInitial());
 
   Future<void> initiateRegistration({
     required String fullName,
@@ -75,245 +38,144 @@ class RegisterCubit extends Cubit<RegisterState> {
   }) async {
     emit(RegisterLoading());
 
-    final nameError = Validators.validateName(fullName);
-    if (nameError != null) {
-      emit(RegisterFailure(nameError));
-      return;
-    }
-
-    if (!_isValidPhoneNumber(mobile)) {
-      emit(RegisterFailure('رقم الهاتف يجب أن يكون 9 أرقام ويبدأ بـ 7'));
-      return;
-    }
-
-    final mobileError = Validators.validateMobile(
-      mobile,
+    final validationError = _validator.validateRegistrationData(
+      fullName: fullName,
+      mobile: mobile,
+      age: age,
+      gender: gender,
+      password: password,
+      confirmPassword: confirmPassword,
     );
-    if (mobileError != null) {
-      emit(RegisterFailure(mobileError));
-      return;
-    }
 
-    final ageError = Validators.validateAge(age?.toString());
-    if (ageError != null) {
-      emit(RegisterFailure(ageError));
-      return;
-    }
-
-    if (gender == null || gender.isEmpty) {
-      emit(RegisterFailure('Gender is required'));
-      return;
-    }
-
-    final passwordError = Validators.validatePassword(
-      password,
-      customRegex: firebaseConfig.passwordRegex,
-    );
-    if (passwordError != null) {
-      emit(RegisterFailure(passwordError));
-      return;
-    }
-
-    final confirmPasswordError = Validators.validateConfirmPassword(
-      confirmPassword,
-      password,
-    );
-    if (confirmPasswordError != null) {
-      emit(RegisterFailure(confirmPasswordError));
+    if (validationError != null) {
+      emit(RegisterFailure(validationError));
       return;
     }
 
     try {
-      String formattedMobileForDB = _formatPhoneForDatabase(mobile);
-      String formattedMobileForAuth = _formatPhoneForAuth(mobile);
+      String formattedMobileForDB = PhoneFormatter.formatForDatabase(mobile);
+      String formattedMobileForAuth = PhoneFormatter.formatForAuth(mobile);
 
-      var existingUserQuery = await _firestore
-          .collection('users')
-          .where('mobile', isEqualTo: formattedMobileForDB)
-          .limit(1)
-          .get();
-
-      if (existingUserQuery.docs.isNotEmpty) {
-        emit(RegisterFailure('هذا الرقم مسجل مسبقاً. يرجى تسجيل الدخول.'));
+      bool userExists = await _userRepository.userExistsWithMobile(
+        formattedMobileForDB,
+      );
+      if (userExists) {
+        emit(
+          RegisterFailure('This number is already registered. Please log in.'),
+        );
         return;
       }
 
-      _tempFullName = fullName;
-      _tempMobile = formattedMobileForDB;
-      _tempAge = age;
-      _tempGender = gender;
-      _tempPassword = password;
+      _tempRegistrationData = RegistrationData(
+        fullName: fullName,
+        mobile: formattedMobileForDB,
+        age: age!,
+        gender: gender!,
+        password: password,
+      );
 
       log('Formatted phone for DB: $formattedMobileForDB');
       log('Formatted phone for Auth: $formattedMobileForAuth');
 
-      // إرسال OTP
       await _sendOtpCode(formattedMobileForAuth);
     } catch (e) {
       log('Registration initiation error: $e');
-      emit(RegisterFailure('حدث خطأ أثناء بدء التسجيل: ${e.toString()}'));
+      emit(
+        RegisterFailure(
+          'An error occurred while starting registration: ${e.toString()}',
+        ),
+      );
     }
   }
 
   Future<void> _sendOtpCode(String phoneNumber) async {
-    try {
-      log('Sending OTP to: $phoneNumber');
-
-      await _auth.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          log("Phone verification completed automatically");
-          await _signInWithCredential(credential);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          log("Phone verification failed: ${e.code} - ${e.message}");
-
-          String errorMessage = 'فشل في التحقق من رقم الهاتف';
-
-          switch (e.code) {
-            case 'invalid-phone-number':
-              errorMessage = 'رقم الهاتف غير صحيح';
-              break;
-            case 'too-many-requests':
-              errorMessage =
-                  'تم إرسال عدد كبير من الطلبات. يرجى المحاولة لاحقاً';
-              break;
-            case 'quota-exceeded':
-              errorMessage = 'تم تجاوز الحد المسموح. يرجى المحاولة لاحقاً';
-              break;
-            default:
-              errorMessage = e.message ?? errorMessage;
-          }
-
-          emit(RegisterFailure(errorMessage));
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          log("OTP code sent successfully. VerificationId: $verificationId");
-          _verificationId = verificationId;
-          emit(
-            RegisterOtpRequired(_tempMobile!, verificationId: verificationId),
-          );
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          log("Code auto retrieval timeout: $verificationId");
-          _verificationId = verificationId;
-        },
-        timeout: const Duration(seconds: 60),
-      );
-    } catch (e) {
-      log("Error sending OTP: $e");
-      emit(RegisterFailure('فشل في إرسال رمز التحقق: ${e.toString()}'));
-    }
+    await _otpService.sendOtp(
+      phoneNumber: phoneNumber,
+      onCodeSent: (verificationId) {
+        emit(
+          RegisterOtpRequired(
+            _tempRegistrationData!.mobile,
+            verificationId: verificationId,
+          ),
+        );
+      },
+      onError: (error) {
+        emit(RegisterFailure(error));
+      },
+      onAutoVerified: (credential) async {
+        await _handlePhoneCredential(credential);
+      },
+    );
   }
 
   Future<void> verifyOtpAndCompleteRegistration(String otpCode) async {
-    if (_verificationId == null) {
-      emit(RegisterFailure("عملية التحقق لم تبدأ بشكل صحيح"));
+    final otpError = _validator.validateOtpCode(otpCode);
+    if (otpError != null) {
+      emit(RegisterFailure(otpError));
       return;
     }
 
-    if (otpCode.length != 6) {
-      emit(RegisterFailure("رمز التحقق يجب أن يكون 6 أرقام"));
+    if (_otpService.verificationId == null) {
+      emit(
+        RegisterFailure("The verification process did not start correctly."),
+      );
       return;
     }
 
     emit(RegisterLoading());
 
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: otpCode,
-      );
-
-      await _signInWithCredential(credential);
+      PhoneAuthCredential? credential = await _otpService.verifyOtp(otpCode);
+      if (credential != null) {
+        await _handlePhoneCredential(credential);
+      }
     } catch (e) {
       log("OTP verification failed: $e");
-      emit(RegisterFailure("رمز التحقق غير صحيح. يرجى المحاولة مرة أخرى"));
+      emit(RegisterFailure(e.toString()));
     }
   }
 
-  Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
+  Future<void> _handlePhoneCredential(PhoneAuthCredential credential) async {
     try {
-      UserCredential userCredential = await _auth.signInWithCredential(
+      UserCredential userCredential = await _otpService.signInWithCredential(
         credential,
       );
-
-      if (userCredential.user != null) {
-        log("User signed in successfully: ${userCredential.user!.uid}");
-        await _completeRegistration();
-      } else {
-        emit(RegisterFailure("فشل في التحقق من رقم الهاتف"));
-      }
-    } on FirebaseAuthException catch (e) {
-      log("Firebase Auth Exception: ${e.code} - ${e.message}");
-
-      String errorMessage = 'فشل في التحقق';
-
-      switch (e.code) {
-        case 'invalid-verification-code':
-          errorMessage = 'رمز التحقق غير صحيح';
-          break;
-        case 'session-expired':
-          errorMessage = 'انتهت صلاحية الجلسة. يرجى إعادة المحاولة';
-          break;
-        default:
-          errorMessage = e.message ?? errorMessage;
-      }
-
-      emit(RegisterFailure(errorMessage));
+      await _completeRegistration(userCredential.user!);
     } catch (e) {
-      log("General Exception: $e");
-      emit(RegisterFailure("حدث خطأ: ${e.toString()}"));
+      log("Credential handling failed: $e");
+      emit(RegisterFailure(e.toString()));
     }
   }
 
-  Future<void> _completeRegistration() async {
-    if (_tempMobile == null ||
-        _tempPassword == null ||
-        _tempFullName == null ||
-        _tempAge == null ||
-        _tempGender == null) {
-      emit(RegisterFailure("بيانات التسجيل مفقودة. يرجى المحاولة مرة أخرى"));
+  Future<void> _completeRegistration(User currentUser) async {
+    if (_tempRegistrationData == null) {
+      log("Error: Temporary registration data missing.");
+      emit(RegisterFailure("Registration data is missing. Please try again."));
       return;
     }
 
     try {
-      User? currentUser = _auth.currentUser;
-      if (currentUser == null) {
-        throw Exception("لا يوجد مستخدم متحقق منه");
-      }
+      await _userRepository.saveUserData(
+        user: currentUser,
+        fullName: _tempRegistrationData!.fullName,
+        mobile: _tempRegistrationData!.mobile,
+        age: _tempRegistrationData!.age,
+        gender: _tempRegistrationData!.gender,
+        password: _tempRegistrationData!.password,
+      );
 
-      log("Saving user data to Firestore...");
-      log("Mobile format for DB: $_tempMobile");
-
-      await _firestore.collection('users').doc(currentUser.uid).set({
-        'uid': currentUser.uid,
-        'fullName': _tempFullName,
-        'mobile': _tempMobile, 
-        'age': _tempAge,
-        'gender': _tempGender,
-        'phoneNumber':
-            currentUser.phoneNumber, 
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      log("User data saved successfully");
       _clearTempData();
       emit(RegisterSuccess());
     } catch (e) {
       log("Registration completion failed: $e");
       _clearTempData();
-      emit(RegisterFailure('فشل في إتمام التسجيل: ${e.toString()}'));
+      emit(RegisterFailure(e.toString()));
     }
   }
 
   void _clearTempData() {
-    _tempFullName = null;
-    _tempMobile = null;
-    _tempAge = null;
-    _tempGender = null;
-    _tempPassword = null;
-    _verificationId = null;
+    _tempRegistrationData = null;
+    _otpService.clearVerificationId();
   }
 
   void cancelOtpProcess() {
@@ -322,11 +184,17 @@ class RegisterCubit extends Cubit<RegisterState> {
   }
 
   Future<void> resendOtp() async {
-    if (_tempMobile != null) {
-      String phoneForAuth = _tempMobile!.replaceAll(' ', '');
+    if (_tempRegistrationData?.mobile != null) {
+      String phoneForAuth = PhoneFormatter.formatForAuth(
+        _tempRegistrationData!.mobile,
+      );
       await _sendOtpCode(phoneForAuth);
     } else {
-      emit(RegisterFailure("لا يوجد رقم هاتف لإعادة إرسال رمز التحقق إليه"));
+      emit(
+        RegisterFailure(
+          "There is no phone number to resend the verification code to.",
+        ),
+      );
     }
   }
 }

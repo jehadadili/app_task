@@ -14,8 +14,8 @@ class RegisterScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firebaseConfig = context.select(
-      (SplashCubit cubit) => cubit.state is SplashLoaded
-          ? (cubit.state as SplashLoaded).config
+      (SplashCubit cubit) => cubit.state is NavigateToLogin
+          ? (cubit.state as NavigateToLogin).config
           : FirebaseConfig.defaultConfig(),
     );
 

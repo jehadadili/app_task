@@ -1,45 +1,57 @@
-
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:bloc/bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_task_app/core/utils/quiz_answer_validator.dart';
+import 'package:flutter_task_app/core/utils/quiz_result_calculator.dart';
 import 'package:flutter_task_app/features/quiz/cubit/quiz_state.dart';
-import 'package:flutter_task_app/features/quiz/model/drag_drop_quiz_question.dart';
-import 'package:flutter_task_app/features/quiz/model/matching_quiz_question.dart';
-import 'package:flutter_task_app/features/quiz/model/multiple_choice_question.dart';
-import 'package:flutter_task_app/features/quiz/model/question_model.dart';
 import 'package:flutter_task_app/features/quiz/model/quiz_answer.dart';
-import 'package:flutter_task_app/features/quiz/model/quiz_result_model.dart';
+import 'package:flutter_task_app/features/quiz/services/quiz_answer_checker.dart';
+import 'package:flutter_task_app/features/quiz/services/quiz_data_service.dart';
+import 'package:flutter_task_app/features/quiz/services/quiz_timer_service.dart';
+
+
 
 class QuizCubit extends Cubit<QuizState> {
-  final FirebaseFirestore _firestore;
-  Timer? _timer;
-  DateTime? _questionStartTime;
+  final QuizTimerService _timerService;
+  final QuizAnswerChecker _answerChecker;
+  final QuizDataService _dataService;
+  final QuizResultCalculator _resultCalculator;
+  final QuizAnswerValidator _answerValidator;
 
-  QuizCubit({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance,
-        super(QuizInitial());
+  QuizCubit({
+    FirebaseFirestore? firestore,
+    QuizTimerService? timerService,
+    QuizAnswerChecker? answerChecker,
+    QuizDataService? dataService,
+    QuizResultCalculator? resultCalculator,
+    QuizAnswerValidator? answerValidator,
+  })  : _timerService = timerService ?? QuizTimerService(),
+        _answerChecker = answerChecker ?? QuizAnswerChecker(),
+        _dataService = dataService ?? QuizDataService(firestore: firestore),
+        _resultCalculator = resultCalculator ?? QuizResultCalculator(),
+        _answerValidator = answerValidator ?? QuizAnswerValidator(),
+        super(QuizInitial()) {
+    _setupTimerCallbacks();
+  }
+
+  void _setupTimerCallbacks() {
+    _timerService.onTimeUp = _timeUp;
+    _timerService.onTick = (remainingTime) {
+      final currentState = state;
+      if (currentState is QuizLoaded) {
+        emit(currentState.copyWith(remainingTime: remainingTime));
+      }
+    };
+  }
 
   Future<void> loadQuiz() async {
     try {
       emit(QuizLoading());
       
-      final snapshot = await _firestore
-          .collection('quizzes')
-          .doc('quiz_001')
-          .collection('questions')
-          .orderBy('order')
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        emit(const QuizError(message: 'No questions found'));
-        return;
-      }
-
-      final questions = snapshot.docs
-          .map((doc) => QuestionModel.fromFirestore(doc.data()))
-          .toList();
-
+      final questions = await _dataService.loadQuizQuestions();
+      
       emit(QuizLoaded(
         questions: questions,
         currentQuestionIndex: 0,
@@ -47,33 +59,21 @@ class QuizCubit extends Cubit<QuizState> {
         remainingTime: questions.first.timeLimit,
       ));
 
-      _startTimer(questions.first.timeLimit);
-      _questionStartTime = DateTime.now();
+      _timerService.startTimer(questions.first.timeLimit);
     } catch (e) {
+      log("QuizCubit: Failed to load quiz: $e");
       emit(QuizError(message: 'Failed to load quiz: $e'));
     }
-  }
-
-  void _startTimer(int timeLimit) {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final currentState = state;
-      if (currentState is QuizLoaded) {
-        if (currentState.remainingTime <= 1) {
-          _timeUp();
-        } else {
-          emit(currentState.copyWith(remainingTime: currentState.remainingTime - 1));
-        }
-      }
-    });
   }
 
   void _timeUp() {
     final currentState = state;
     if (currentState is QuizLoaded && !currentState.isQuestionAnswered) {
-      final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
-      final timeTaken = _calculateTimeTaken(currentQuestion.timeLimit);
+      log("QuizCubit: Time up for question ${currentState.currentQuestionIndex}");
       
+      final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
+      final timeTaken = currentQuestion.timeLimit;
+
       final answer = AnswerModel(
         questionId: currentQuestion.id,
         answer: null,
@@ -85,18 +85,22 @@ class QuizCubit extends Cubit<QuizState> {
     }
   }
 
-  int _calculateTimeTaken(int timeLimit) {
-    if (_questionStartTime == null) return timeLimit;
-    return DateTime.now().difference(_questionStartTime!).inSeconds;
-  }
-
   void submitAnswer(dynamic answer) {
     final currentState = state;
     if (currentState is! QuizLoaded || currentState.isQuestionAnswered) return;
 
+    log("QuizCubit: Submitting answer for question ${currentState.currentQuestionIndex}. Answer: $answer");
+    
     final currentQuestion = currentState.questions[currentState.currentQuestionIndex];
-    final timeTaken = _calculateTimeTaken(currentQuestion.timeLimit);
-    final isCorrect = _checkAnswer(currentQuestion, answer);
+    
+    if (!_answerValidator.shouldProcessAnswer(currentQuestion, answer)) {
+      return; 
+    }
+
+    final timeTaken = _timerService.calculateTimeTaken(currentQuestion.timeLimit);
+    final isCorrect = _answerChecker.checkAnswer(currentQuestion, answer);
+    
+    log("QuizCubit: Answer checked. Correct: $isCorrect, Time taken: $timeTaken seconds");
 
     final answerModel = AnswerModel(
       questionId: currentQuestion.id,
@@ -104,12 +108,14 @@ class QuizCubit extends Cubit<QuizState> {
       timeTaken: timeTaken,
       isCorrect: isCorrect,
     );
-
+    
     _processAnswer(answerModel);
   }
 
   void _processAnswer(AnswerModel answer) {
-    final currentState = state as QuizLoaded;
+    final currentState = state;
+    if (currentState is! QuizLoaded) return;
+
     final updatedAnswers = [...currentState.answers, answer];
 
     emit(currentState.copyWith(
@@ -117,42 +123,15 @@ class QuizCubit extends Cubit<QuizState> {
       isQuestionAnswered: true,
     ));
 
-    _timer?.cancel();
+    _timerService.cancelTimer();
 
-    // Auto-advance after 2 seconds
     Timer(const Duration(seconds: 2), () {
-      nextQuestion();
+      final latestState = state;
+      if (latestState is QuizLoaded &&
+          latestState.currentQuestionIndex == currentState.currentQuestionIndex) {
+        nextQuestion();
+      }
     });
-  }
-
-  bool _checkAnswer(QuestionModel question, dynamic answer) {
-    switch (question.type) {
-      case 'multiple_choice':
-        final mcq = question as MultipleChoiceQuestion;
-        return mcq.correctAnswer == answer;
-      case 'drag_drop':
-        final ddq = question as DragDropQuestion;
-        if (answer is Map<String, String>) {
-          return _mapsEqual(ddq.correctPairs, answer);
-        }
-        return false;
-      case 'matching':
-        final mq = question as MatchingQuestion;
-        if (answer is Map<String, String>) {
-          return _mapsEqual(mq.correctMatches, answer);
-        }
-        return false;
-      default:
-        return false;
-    }
-  }
-
-  bool _mapsEqual(Map<String, String> map1, Map<String, String> map2) {
-    if (map1.length != map2.length) return false;
-    for (final key in map1.keys) {
-      if (map1[key] != map2[key]) return false;
-    }
-    return true;
   }
 
   void nextQuestion() {
@@ -162,6 +141,8 @@ class QuizCubit extends Cubit<QuizState> {
     if (currentState.currentQuestionIndex < currentState.questions.length - 1) {
       final nextIndex = currentState.currentQuestionIndex + 1;
       final nextQuestion = currentState.questions[nextIndex];
+      
+      log("QuizCubit: Moving to next question: Index $nextIndex, ID: ${nextQuestion.id}");
 
       emit(currentState.copyWith(
         currentQuestionIndex: nextIndex,
@@ -169,43 +150,39 @@ class QuizCubit extends Cubit<QuizState> {
         isQuestionAnswered: false,
       ));
 
-      _startTimer(nextQuestion.timeLimit);
-      _questionStartTime = DateTime.now();
+      _timerService.startTimer(nextQuestion.timeLimit);
     } else {
+      log("QuizCubit: Reached end of quiz. Completing...");
       _completeQuiz();
     }
   }
 
   void _completeQuiz() {
-    final currentState = state as QuizLoaded;
-    final totalScore = currentState.answers.where((a) => a.isCorrect).length;
-    final totalQuestions = currentState.questions.length;
-    final totalTimeTaken = currentState.answers.fold<int>(0, (sum, a) => sum + a.timeTaken);
-    final percentage = (totalScore / totalQuestions) * 100;
+    final currentState = state;
+    if (currentState is! QuizLoaded) return;
 
-    final result = QuizResultModel(
-      answers: currentState.answers,
-      totalScore: totalScore,
-      totalQuestions: totalQuestions,
-      totalTimeTaken: totalTimeTaken,
-      percentage: percentage,
+    final result = _resultCalculator.calculateResult(
+      currentState.answers,
+      currentState.questions.length,
     );
 
-    _timer?.cancel();
+    log("QuizCubit: Quiz completed. Score: ${result.totalScore}/${result.totalQuestions}, Percentage: ${result.percentage.toStringAsFixed(1)}%");
+    
+    _timerService.cancelTimer();
     emit(QuizCompleted(result: result));
   }
 
   void restartQuiz() {
-    _timer?.cancel();
-    _questionStartTime = null;
+    log("QuizCubit: Restarting quiz...");
+    _timerService.dispose();
     emit(QuizInitial());
     loadQuiz();
   }
 
   @override
   Future<void> close() {
-    _timer?.cancel();
+    log("QuizCubit: Closing cubit and disposing services.");
+    _timerService.dispose();
     return super.close();
   }
 }
-

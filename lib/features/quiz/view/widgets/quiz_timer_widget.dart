@@ -28,7 +28,7 @@ class QuizTimerWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: (isLowTime ? Colors.red : Colors.blue).withOpacity(0.3),
+            color: (isLowTime ? Colors.red : Colors.blue).withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -49,7 +49,7 @@ class QuizTimerWidget extends StatelessWidget {
                 Text(
                   'Time Remaining',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -57,7 +57,7 @@ class QuizTimerWidget extends StatelessWidget {
                 const SizedBox(height: 4),
                 LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: Colors.white.withOpacity(0.3),
+                  backgroundColor: Colors.white.withValues(alpha: 0.3),
                   valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                   minHeight: 4,
                 ),

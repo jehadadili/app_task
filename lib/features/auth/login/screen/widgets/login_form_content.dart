@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_task_app/core/extensions/navigation_extension.dart';
@@ -44,7 +42,7 @@ class LoginFormContent extends StatelessWidget {
               child: Column(
                 children: [
                   const FormHeader(logoPath: "assets/logo.png"),
-                  
+
                   LoginInputFields(
                     formController: formController,
                     isLoading: isLoading,

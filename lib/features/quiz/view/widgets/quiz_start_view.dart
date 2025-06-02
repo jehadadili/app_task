@@ -7,15 +7,15 @@ import 'package:flutter_task_app/features/quiz/model/drag_drop_quiz_question.dar
 import 'package:flutter_task_app/features/quiz/model/matching_quiz_question.dart';
 import 'package:flutter_task_app/features/quiz/model/multiple_choice_question.dart';
 import 'package:flutter_task_app/features/quiz/model/question_model.dart';
-import 'package:flutter_task_app/features/quiz/view/quiz_result_screen.dart';
-import 'package:flutter_task_app/features/quiz/view/widgets/drag_drop_quiz_widget.dart';
-import 'package:flutter_task_app/features/quiz/view/widgets/matching_quiz_widget.dart';
-import 'package:flutter_task_app/features/quiz/view/widgets/multiple_choice_widget.dart';
+import 'package:flutter_task_app/features/quiz/view/widgets/quiz_result/quiz_result_screen.dart';
+import 'package:flutter_task_app/features/quiz/view/widgets/drag_quiz/drag_drop_quiz_widget.dart';
+import 'package:flutter_task_app/features/quiz/view/widgets/matching_quiz/matching_quiz_widget.dart';
+import 'package:flutter_task_app/features/quiz/view/widgets/multiple_quiz/multiple_choice_widget.dart';
 import 'package:flutter_task_app/features/quiz/view/widgets/progress_indicator_widget.dart';
 import 'package:flutter_task_app/features/quiz/view/widgets/quiz_timer_widget.dart';
 
-class QuizView extends StatelessWidget {
-  const QuizView({super.key});
+class QuizStartView extends StatelessWidget {
+  const QuizStartView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +100,6 @@ class QuizView extends StatelessWidget {
                     ),
                   ),
 
-                  // Question Content
                   Expanded(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 500),
@@ -149,7 +148,7 @@ class QuizView extends StatelessWidget {
         );
       case 'drag_drop':
         return DragDropWidget(
-          question: question as DragDropQuestion,
+          question: question as FillBlankDragDropQuestion,
           isAnswered: isAnswered,
           onAnswerSelected: cubit.submitAnswer,
         );

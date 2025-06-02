@@ -9,7 +9,7 @@ abstract class QuestionModel extends Equatable {
   final String text;
   final int order;
   final String type;
-  final int timeLimit; // in seconds
+  final int timeLimit; 
 
   const QuestionModel({
     required this.id,
@@ -24,7 +24,7 @@ abstract class QuestionModel extends Equatable {
       case 'multiple_choice':
         return MultipleChoiceQuestion.fromFirestore(data);
       case 'drag_drop':
-        return DragDropQuestion.fromFirestore(data);
+        return FillBlankDragDropQuestion.fromFirestore(data);
       case 'matching':
         return MatchingQuestion.fromFirestore(data);
       default:
